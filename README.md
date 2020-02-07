@@ -1,5 +1,5 @@
 # BLACKSTOMP
-ESP32-A1S Digital Effect Board
+ESP32-A1S DSP board: one board for all effect pedals
 
 # Features
 - 6 Control Input (for potentiometers, pedal, button, or selector switch)
