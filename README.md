@@ -17,6 +17,7 @@ ESP32-A1S DSP board: One board for all effect pedals!
 - The standard version is suitable for design with MIDI I/O and balanced audio option, while the simple version is suitable for design without MIDI and balanced audio option
 
 # Program Sketch
+- The ESP32-A1S is basically a WROVER module with and AC101 stereo codec inside, so you can use any WROVER board setting on your development IDE for this board
 - The provided software contains only the basic core that initialize the codec, i2s interface, and running the signal processing block
 - The signal processing block contains nothing more than copying the audio signal data from input buffer into the output buffer
 - You can write your own signal processing algorithm by editing the signal processing block, and it is recommended to code the signal processing module as separate class and call the object's processing method in this block
