@@ -2,7 +2,7 @@
 ESP32-A1S DSP board: One board for all effect pedals!
 
 # Features
-- 6 Control Input (for potentiometers, pedal, button, or selector switch)
+- Six control inputs (for potentiometers, pedal, button, or selector switch)
 - Guitar input
 - Microphone input
 - Stereo output
