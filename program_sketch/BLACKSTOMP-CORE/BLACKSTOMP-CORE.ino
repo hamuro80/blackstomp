@@ -104,8 +104,7 @@ void i2s_task(void* arg)
     for(int i=0,k=0;k<SAMPLECOUNT;k++,i+=2)
     {
       inleft[k] = (float) inbuffer[i];  
-      //inright[k] = (float) inbuffer[i+1];
-      inright[k] = inleft[k];
+      inright[k] = (float) inbuffer[i+1];
     }
   
     //process the signal
@@ -151,19 +150,19 @@ void setup()
 {
   //codec setup
   codec.setup(CODEC_SDA, CODEC_SCK);
-  
+
   //stereo unbalanced line-in
   codec.LeftLineLeft(true);
   codec.RightLineRight(true);
 
 /*
-  //unbalanced line-in for left channel and balnced microphone for right channel
+  //unbalanced line-in for left channel and balanced microphone for right channel
   codec.LeftLineLeft(true);
   codec.RightMic1(true);
- */
+*/
 
  /*
-  //balanced line-in for left channel and balnced microphone for right channel
+  //balanced line-in for left channel and balanced microphone for right channel
   codec.LeftLineDiff(true);
   codec.RightMic1(true);
 */
