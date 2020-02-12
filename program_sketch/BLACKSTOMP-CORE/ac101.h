@@ -104,13 +104,17 @@ public:
 	uint8_t GetVolHeadphone(); //0-63
 	bool SetVolHeadphone(uint8_t volume); //0-63
   
-  //input selector methods
-  bool LeftMicEnable(bool enable);
-  bool LeftLineEnable(bool enable);
-  bool RightMicEnable(bool enable);
-  bool RightLineEnable(bool enable);
+	//leftchannel input selector methods
+	bool LeftMic1(bool select);		//left channel mic1 select
+	bool LeftLineDiff(bool select);	//left channel line difference (line Left- Line Right)
+	bool LeftLineLeft(bool select);	//left channel line (L)
+		
+	//rightchannel input selector methods
+	bool RightMic1(bool select);		//right channel mic1 select
+	bool RightLineDiff(bool select);	//right channel line difference (line Left- Line Right)
+	bool RightLineRight(bool select);	//right channel line (R)
 
-  //i2s configuration
+	//i2s configuration
 	bool SetI2sSampleRate(uint16_t rate);
 	bool SetI2sMode(uint16_t mode);
 	bool SetI2sWordSize(uint16_t size);

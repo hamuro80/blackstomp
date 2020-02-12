@@ -141,10 +141,13 @@ const uint8_t regs[] = {
 	 DAC_DAP_ENA
 };
 
-#define RIGHT_MIC_ENABIT  13
-#define RIGHT_LINE_ENABIT 10
-#define LEFT_MIC_ENABIT   5
-#define LEFT_LINE_ENABIT  3
+#define LEFT_MIC1_ENABIT		6
+#define LEFT_LINELEFT_ENABIT	3
+#define LEFT_LINEDIFF_ENABIT	4
+#define RIGHT_MIC1_ENABIT		13
+#define RIGHT_LINERIGHT_ENABIT	10
+#define RIGHT_LINEDIFF_ENABIT	11
+
 
 bool AC101::WriteReg(uint8_t reg, uint16_t val)
 {
@@ -174,6 +177,60 @@ uint16_t AC101::ReadReg(uint8_t reg)
 AC101::AC101()
 {
 	
+}
+
+bool AC101::LeftMic1(bool select)
+{
+	uint16_t val = ReadReg(ADC_SRC);
+	if(select)
+		val |= (uint16_t)1<<LEFT_MIC1_ENABIT;
+	else val &= ~((uint16_t)1<<LEFT_MIC1_ENABIT);
+	return WriteReg(ADC_SRC, val);
+}
+ 
+bool AC101::RightMic1(bool select)
+{
+	uint16_t val = ReadReg(ADC_SRC);
+	if(select)
+		val |= (uint16_t)1<<RIGHT_MIC1_ENABIT;
+	else val &= ~((uint16_t)1<<RIGHT_MIC1_ENABIT);
+	return WriteReg(ADC_SRC, val);
+}
+
+bool AC101::LeftLineLeft(bool select)
+{
+	uint16_t val = ReadReg(ADC_SRC);
+	if(select)
+		val |= (uint16_t)1<<LEFT_LINELEFT_ENABIT;
+	else val &= ~((uint16_t)1<<LEFT_LINELEFT_ENABIT);
+	return WriteReg(ADC_SRC, val);
+}
+
+bool AC101::RightLineRight(bool select)
+{
+	uint16_t val = ReadReg(ADC_SRC);
+	if(select)
+		val |= (uint16_t)1<<RIGHT_LINERIGHT_ENABIT;
+	else val &= ~((uint16_t)1<<RIGHT_LINERIGHT_ENABIT);
+	return WriteReg(ADC_SRC, val);
+}
+
+bool AC101::LeftLineDiff(bool select)
+{
+	uint16_t val = ReadReg(ADC_SRC);
+	if(select)
+		val |= (uint16_t)1<<LEFT_LINEDIFF_ENABIT;
+	else val &= ~((uint16_t)1<<LEFT_LINEDIFF_ENABIT);
+	return WriteReg(ADC_SRC, val);
+}
+
+bool AC101::RightLineDiff(bool select)
+{
+	uint16_t val = ReadReg(ADC_SRC);
+	if(select)
+		val |= (uint16_t)1<<RIGHT_LINEDIFF_ENABIT;
+	else val &= ~((uint16_t)1<<RIGHT_LINEDIFF_ENABIT);
+	return WriteReg(ADC_SRC, val);
 }
 
 bool AC101::setup(int sda, int scl, uint32_t frequency)
@@ -217,9 +274,6 @@ bool AC101::setup(int sda, int scl, uint32_t frequency)
 	ok &= WriteReg(OMIXER_SR, 0x0102); //select only from dac
 	ok &= WriteReg(OMIXER_DACA_CTRL, 0xf080); //enabl ldac, rdac, lmixer, rmixer, 
 	
-	//ok &= WriteReg(ADC_SRC, 0x4408); //select line-l and line-r input
-	//ok &= WriteReg(ADC_SRC, 0x2020); //select mic1 and mic2 input
-	
 	ok &= WriteReg(ADC_DIG_CTRL, 0x8000); //enable adc
 	ok &= WriteReg(MOD_CLK_ENA,  0x800c);
 	ok &= WriteReg(MOD_RST_CTRL, 0x800c);
@@ -243,38 +297,6 @@ uint8_t AC101::GetVolSpeaker()
 {
 	// Times 2 to match the headphone volume
 	return (ReadReg(SPKOUT_CTRL) & 31) * 2;
-}
-
-bool AC101::RightMicEnable(bool enable)
-{
-  uint16_t val = ReadReg(ADC_SRC);
-  val &=  ~( (uint16_t)1 << RIGHT_MIC_ENABIT);
-  val |=  (uint16_t)enable << RIGHT_MIC_ENABIT;
-  return WriteReg(ADC_SRC, val);
-}
-
-bool AC101::RightLineEnable(bool enable)
-{
-  uint16_t val = ReadReg(ADC_SRC);
-  val &=  ~( (uint16_t)1 << RIGHT_LINE_ENABIT);
-  val |=  (uint16_t)enable << RIGHT_LINE_ENABIT;
-  return WriteReg(ADC_SRC, val);
-}
-
-bool AC101::LeftMicEnable(bool enable)
-{
-  uint16_t val = ReadReg(ADC_SRC);
-  val &=  ~( (uint16_t)1 << LEFT_MIC_ENABIT);
-  val |=  (uint16_t)enable << LEFT_MIC_ENABIT;
-  return WriteReg(ADC_SRC, val);
-}
-
-bool AC101::LeftLineEnable(bool enable)
-{
-  uint16_t val = ReadReg(ADC_SRC);
-  val &=  ~( (uint16_t)1 << LEFT_LINE_ENABIT);
-  val |=  (uint16_t)enable << LEFT_LINE_ENABIT;
-  return WriteReg(ADC_SRC, val);
 }
 
 bool AC101::SetVolSpeaker(uint8_t volume)

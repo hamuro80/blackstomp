@@ -152,21 +152,21 @@ void setup()
   //codec setup
   codec.setup(CODEC_SDA, CODEC_SCK);
   
-  //enable line input on both left and right channels
-  codec.LeftLineEnable(true);
-  codec.RightLineEnable(true);
-  /*
-  //enable microphone on both left and right channels
-  codec.LeftMicEnable(true);
-  codec.RightMicEnable(true);
-  */
+  //stereo unbalanced line-in
+  codec.LeftLineLeft(true);
+  codec.RightLineRight(true);
 
-   /*
-  //enable microphone on  left channel and line input on right channel
-  codec.LeftMicEnable(true);
-  codec.RightLineEnable(true);
-  */
-  
+/*
+  //unbalanced line-in for left channel and balnced microphone for right channel
+  codec.LeftLineLeft(true);
+  codec.RightMic1(true);
+ */
+
+ /*
+  //balanced line-in for left channel and balnced microphone for right channel
+  codec.LeftLineDiff(true);
+  codec.RightMic1(true);
+*/
   i2s_setup();
   xTaskCreate(i2s_task, "i2s_task", 4096, NULL, AUDIO_PROCESS_PRIORITY, NULL);
   Serial.begin(115200);
