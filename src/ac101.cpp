@@ -1,33 +1,29 @@
-/*
-  * ESP32-A1S AC101 Codec driver library for Arduino
-  * Author: HAMURO
-  * COPYRIGHT(c) 2020 DEEPTRONIC.COM      
-  * 
-  * Redistribution and use in source and binary forms, with or without modification,
-  * are permitted provided that the following conditions are met:
-  *   1. Redistributions of source code must retain the above copyright notice,
-  *      this list of conditions and the following disclaimer.
-  *   2. Redistributions in binary form must reproduce the above copyright notice,
-  *      this list of conditions and the following disclaimer in the documentation
-  *      and/or other materials provided with the distribution.
-  *   3. Neither the name of DEEPTRONIC.COM nor the names of its contributors
-  *      may be used to endorse or promote products derived from this software
-  *      without specific prior written permission.
-  *
-  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-  * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-  * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
-  * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-  * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-  * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-  * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
-  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-  *
-  ******************************************************************************
-  */
-
+/*!
+ *  @file       ac101.cpp
+ *  Project     Blackstomp Arduino Library
+ *  @brief      Blackstomp Library for the Arduino
+ *  @author     Hasan Murod
+ *  @date       19/11/2020
+ *  @license    MIT - Copyright (c) 2020 Hasan Murod
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ */
 #include "AC101.h"
 #include <Wire.h>
 
@@ -179,6 +175,62 @@ AC101::AC101()
 	
 }
 
+bool AC101::OmixerLeftLineLeft(bool select)
+{
+  uint16_t val = ReadReg(OMIXER_SR);
+  if(select)
+    val |= (uint16_t)1<<3;
+  else val &= ~((uint16_t)1<<3);
+  return WriteReg(OMIXER_SR, val);
+}
+
+bool AC101::OmixerLeftDacLeft(bool select)
+{
+  uint16_t val = ReadReg(OMIXER_SR);
+  if(select)
+    val |= (uint16_t)1<<1;
+  else val &= ~((uint16_t)1<<1);
+  return WriteReg(OMIXER_SR, val);
+}
+
+bool AC101::OmixerLeftMic1(bool select)
+{
+  uint16_t val = ReadReg(OMIXER_SR);
+  if(select)
+    val |= (uint16_t)1<<6;
+  else val &= ~((uint16_t)1<<6);
+  return WriteReg(OMIXER_SR, val);
+}
+
+bool AC101::OmixerRightLineRight(bool select)
+{
+  uint16_t val = ReadReg(OMIXER_SR);
+  if(select)
+    val |= (uint16_t)1<<10;
+  else val &= ~((uint16_t)1<<10);
+  return WriteReg(OMIXER_SR, val);
+}
+
+bool AC101::OmixerRightDacRight(bool select)
+{
+  uint16_t val = ReadReg(OMIXER_SR);
+  if(select)
+    val |= (uint16_t)1<<8;
+  else val &= ~((uint16_t)1<<8);
+  return WriteReg(OMIXER_SR, val);
+}
+
+bool AC101::OmixerRightMic1(bool select)
+{
+  uint16_t val = ReadReg(OMIXER_SR);
+  if(select)
+    val |= (uint16_t)1<<13;
+  else val &= ~((uint16_t)1<<13);
+  return WriteReg(OMIXER_SR, val);
+}
+
+
+
 bool AC101::LeftMic1(bool select)
 {
 	uint16_t val = ReadReg(ADC_SRC);
@@ -236,24 +288,39 @@ bool AC101::RightLineDiff(bool select)
 bool AC101::setup(int sda, int scl, uint32_t frequency)
 {
 	bool ok = Wire.begin(sda, scl, frequency);
-
 	ok &= WriteReg(CHIP_AUDIO_RS, 0x123);
 	delay(100);
 	ok &= 0x0101 == ReadReg(CHIP_AUDIO_RS);
 	ok &= WriteReg(SPKOUT_CTRL, 0xe880);
 
-	// Enable the PLL from 256*44.1KHz MCLK source
-	ok &= WriteReg(PLL_CTRL1, 0x014f);
-	ok &= WriteReg(PLL_CTRL2, 0x8600);
+#ifdef USE_APLL_MCLK_6M
+  // Enable the PLL from 6MHz MCLK source at 44100 sample/s
+  // (FOUT=22.5792M, FIN=6M, M=38 N=429 K=1, see AC101 codec datasheet)
+  // PLL_CTRL1 = 0b 0010 0110 0100 1111 (0x264f)
+  // PLL_CTRL2 = 0b 1001 1010 1101 0000 (0x9AD0)
+  ok &= WriteReg(PLL_CTRL1, 0x264f);
+  ok &= WriteReg(PLL_CTRL2, 0x9AD0);
+  ok &= WriteReg(SYSCLK_CTRL, 0x8b08); //set the source from MCLK
+#else
+  // Enable the PLL from BCLK source at 44100 sample/s (BCLK = 64.fs = 2.8224M)
+  // (FOUT=22.5792M, FIN=2.8224M, M=1, N=24, K=1, see AC101 codec datasheet)
+  // PLL_CTRL1 = 0000 0001 0100 1111 (0x14f)
+  // PLL_CTRL2 = 1000 0001 1000 0000 (0x8180)
+  ok &= WriteReg(PLL_CTRL1, 0x14f);
+  ok &= WriteReg(PLL_CTRL2, 0x8180);
+  ok &= WriteReg(SYSCLK_CTRL, 0xab08); //set the source from BCLK
+#endif
 
-	// Clocking system
-	ok &= WriteReg(SYSCLK_CTRL, 0x8b08);
 	ok &= WriteReg(MOD_CLK_ENA, 0x800c);
 	ok &= WriteReg(MOD_RST_CTRL, 0x800c);
 
-	// Set default at I2S, 44.1KHz, 24bit
-	ok &= SetI2sSampleRate(SAMPLE_RATE_44100);
-	ok &= SetI2sClock(BCLK_DIV_1, false, LRCK_DIV_64, false);
+  #ifdef SAMPLE_RATE_48K
+    ok &= SetI2sSampleRate(SAMPLE_RATE_48000);
+  #else
+    ok &= SetI2sSampleRate(SAMPLE_RATE_44100);
+  #endif
+
+  ok &= SetI2sClock(BCLK_DIV_8, false, LRCK_DIV_64, true);
 	ok &= SetI2sMode(MODE_SLAVE);
 	ok &= SetI2sWordSize(WORD_SIZE_24_BITS);
 	ok &= SetI2sFormat(DATA_FORMAT_I2S);
@@ -278,36 +345,66 @@ bool AC101::setup(int sda, int scl, uint32_t frequency)
 	ok &= WriteReg(MOD_CLK_ENA,  0x800c);
 	ok &= WriteReg(MOD_RST_CTRL, 0x800c);
 
+  // Eenable Output mixer and DAC
+  ok &= WriteReg(OMIXER_DACA_CTRL, 0xff80);
+
+/*
 	// Enable Headphone output
-	ok &= WriteReg(OMIXER_DACA_CTRL, 0xff80);
 	ok &= WriteReg(HPOUT_CTRL, 0xc3c1);	
 	ok &= WriteReg(HPOUT_CTRL, 0xcb00);
-	delay(100);
+	delay(10);
 	ok &= WriteReg(HPOUT_CTRL, 0xfbc0);
 	ok &= SetVolHeadphone(60);
+*/
+ 
 	// Enable Speaker output
 	ok &= WriteReg(SPKOUT_CTRL, 0xeabd);
 	delay(10);
-	ok &= SetVolSpeaker(60);
+  // set the volume at 0dB
+	ok &= SetVolSpeaker(31);
 
 	return ok;
 }
 
+uint8_t AC101::GetMicGain()
+{
+  uint16_t val = ReadReg(ADC_SRCBST_CTRL);
+  return (val >> 12) & 7;
+}
+
+bool AC101::SetMicGain(uint8_t gain)
+{
+  uint16_t val = ReadReg(ADC_SRCBST_CTRL);
+  val &=  ~(7 << 12);
+  val |= gain << 12;
+  return WriteReg(ADC_SRCBST_CTRL, val);
+}
+
 uint8_t AC101::GetVolSpeaker()
 {
-	// Times 2 to match the headphone volume
-	return (ReadReg(SPKOUT_CTRL) & 31) * 2;
+	return (ReadReg(SPKOUT_CTRL) & 31);
 }
 
 bool AC101::SetVolSpeaker(uint8_t volume)
 {
-	// Divide by 2 to match the headphone volume
-	volume /= 2;
 	if (volume > 31) volume = 31;
-
 	uint16_t val = ReadReg(SPKOUT_CTRL);
 	val &= ~31;
 	val |= volume;
+	return WriteReg(SPKOUT_CTRL, val);
+}
+
+bool AC101::SetOutputMode(bool mixedLeft, bool mixedRight)
+{
+	uint16_t val = ReadReg(SPKOUT_CTRL); 
+	if(mixedLeft)
+		val = val | (1<<8);
+	else
+		val = val & (~((uint16_t)(1<<8)));
+	if(mixedRight)
+		val = val | (1<<12);
+	else
+		val = val & (~((uint16_t)(1<<12)));
 	return WriteReg(SPKOUT_CTRL, val);
 }
 
