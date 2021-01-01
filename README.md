@@ -1,7 +1,10 @@
 # BLACKSTOMP
-ESP32-A1S DSP board: One board for all effect pedals!
+A quick development platform for ESP32-A1S digital audio effect processor!
 
 # Features
+- Dual core 240MHz Tensilica Xtensa LX-6
+- WiFi and Bluetooth connectivity
+- 24-bit stereo codec with analog pass-through (for effect bypass)
 - Six control inputs (for potentiometers, pedal, button, or selector switch)
 - Guitar input
 - Microphone input
@@ -9,3 +12,7 @@ ESP32-A1S DSP board: One board for all effect pedals!
 - MIDI input/output
 - Rotary encoder interface
 - I2C/OLED display interface
+
+# Documentation
+- Blackstomp's hardware and software programming manual at https://www.deeptronic.com/blackstomp/
+- Balckstomp schematic diagram at https://www.deeptronic.com/blackstomp/schematic-diagram/
