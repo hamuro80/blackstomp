@@ -14,5 +14,5 @@ A quick development platform for ESP32-A1S digital audio effect processor!
 - I2C/OLED display interface
 
 # Documentation
-- Blackstomp's hardware and software programming manual at https://www.deeptronic.com/blackstomp/
-- Balckstomp schematic diagram at https://www.deeptronic.com/blackstomp/schematic-diagram/
+- Blackstomp hardware and software programming manual at https://www.deeptronic.com/blackstomp/
+- Blackstomp hardware circuit schematic diagram at https://www.deeptronic.com/blackstomp/schematic-diagram/
