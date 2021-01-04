@@ -1,5 +1,6 @@
 # BLACKSTOMP
 A quick development platform for ESP32-A1S digital audio effect processor!
+Versio 1.1
 
 # Features
 - Dual core 240MHz Tensilica Xtensa LX-6
