@@ -15,8 +15,8 @@
 - I2C/OLED display interface
 
 # Change History
-1.1 Fixed blackstomp.cpp at line 555 and 565
-1.0 Initial release
+- 1.1 Fixed blackstomp.cpp at line 555 and 565
+- 1.0 Initial release
 
 # Documentation
 - Blackstomp hardware and software programming manual at https://www.deeptronic.com/blackstomp/
