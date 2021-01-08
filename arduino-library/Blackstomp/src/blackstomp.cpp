@@ -552,7 +552,7 @@ void blackstompSetup(effectModule* module)
 			  if(_module->control[i].levelCount < 2)
 				_module->control[i].levelCount = 2;
 			  _module->control[i].min = 0;
-			  _module->control[i].levelCount.max = _module->control[i].levelCount -1;
+			  _module->control[i].max = _module->control[i].levelCount -1;
 			  break;
 		  }
 		  case CM_SELECTOR:
@@ -562,7 +562,7 @@ void blackstompSetup(effectModule* module)
 			  if(_module->control[i].levelCount < 2)
 				_module->control[i].levelCount = 2;
 			  _module->control[i].min = 0;
-			  _module->control[i].levelCount.max = _module->control[i].levelCount -1;
+			  _module->control[i].max = _module->control[i].levelCount -1;
 			  break;
 		  }
 		  case CM_TAPTEMPO:
