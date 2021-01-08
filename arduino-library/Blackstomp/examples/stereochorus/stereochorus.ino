@@ -193,7 +193,7 @@ stereoChorus  myPedal;
 //setup the effect modules by calling blackstompSetup() inside arduino core's setup()
 void setup() {
  //Serial communication
-  Serial.begin(115200);
+  Serial.begin(9600);
 
   //SETTING UP THE EFFECT MODULE
   blackstompSetup(&myPedal);
@@ -201,6 +201,8 @@ void setup() {
 
 //do repetitive task here (for debugging info only)
 void loop() {
+  //Uncomment to show the system info (might introduce some audible noise on the output)
+  /*
   //System info
   Serial.printf("\nSYSTEM INFO:\n");
   Serial.printf("Internal Total heap %d, internal Free Heap %d\n",ESP.getHeapSize(),ESP.getFreeHeap());
@@ -215,5 +217,6 @@ void loop() {
   Serial.printf("CPU ticks per frame period: %d\n",getTotalCpuTicks());
   Serial.printf("Used CPU ticks: %d\n",getUsedCpuTicks());
   Serial.printf("CPU Usage: %.2f %%\n", 100.0*getCpuUsage());
+  */
   vTaskDelay(1000);
 }
