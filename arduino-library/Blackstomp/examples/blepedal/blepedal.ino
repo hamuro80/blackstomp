@@ -134,21 +134,5 @@ void setup() {
 
 //do repetitive task here (for debugging info only)
 void loop() {
-
-  //System info
-  Serial.printf("\nSYSTEM INFO:\n");
-  Serial.printf("Internal Total heap %d, internal Free Heap %d\n",ESP.getHeapSize(),ESP.getFreeHeap());
-  Serial.printf("SPIRam Total heap %d, SPIRam Free Heap %d\n",ESP.getPsramSize(),ESP.getFreePsram());
-  Serial.printf("ChipRevision %d, Cpu Freq %d, SDK Version %s\n",ESP.getChipRevision(), ESP.getCpuFreqMHz(), ESP.getSdkVersion());
-  Serial.printf("Flash Size %d, Flash Speed %d\n",ESP.getFlashChipSize(), ESP.getFlashChipSpeed());
-  
-  //Blackstomp application info
-  Serial.printf("\nAPPLICATION INFO:\n");
-  Serial.printf("Pedal Name: %s\n",myPedal.name.c_str());
-  Serial.printf("Audio frame per second: %d fps\n",getAudioFps());
-  Serial.printf("CPU ticks per frame period: %d\n",getTotalCpuTicks());
-  Serial.printf("Used CPU ticks: %d\n",getUsedCpuTicks());
-  Serial.printf("CPU Usage: %.2f %%\n", 100.0*getCpuUsage());
-  
-   vTaskDelay(1);
+  vTaskDelay(1000);
 }
