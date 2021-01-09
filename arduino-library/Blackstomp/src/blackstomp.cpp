@@ -589,7 +589,7 @@ void blackstompSetup(effectModule* module)
   xTaskCreatePinnedToCore(i2s_task, "i2s_task", 4096, NULL, AUDIO_PROCESS_PRIORITY, NULL,1);
   
   //audio frame moitoring task
-  xTaskCreatePinnedToCore(framecounter_task, "i2s_task", 4096, NULL, AUDIO_PROCESS_PRIORITY, NULL,0);
+  xTaskCreatePinnedToCore(framecounter_task, "framecounter_task", 4096, NULL, AUDIO_PROCESS_PRIORITY, NULL,0);
   
   //run eeprom service to manage saving some parameter control change in limited update frequency to save the flash from aging
   xTaskCreatePinnedToCore(eepromsetup_task, "eepromsetup_task", 4096, NULL, AUDIO_PROCESS_PRIORITY-1, NULL,0);
