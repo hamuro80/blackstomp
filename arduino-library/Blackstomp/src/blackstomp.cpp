@@ -531,8 +531,8 @@ void eepromsetup_task(void* arg)
 void blackstompSetup(effectModule* module) 
 {
   //init the LED indicator
-  _mainLed.init(MAINLED_PIN, AUDIO_PROCESS_PRIORITY);
-  _auxLed.init(AUXLED_PIN, AUDIO_PROCESS_PRIORITY);
+  _mainLed.init(MAINLED_PIN, AUDIO_PROCESS_PRIORITY-1);
+  _auxLed.init(AUXLED_PIN, AUDIO_PROCESS_PRIORITY-1);
   
   //assign the module pointer "_module" and init the module
   _module = module;
@@ -575,19 +575,24 @@ void blackstompSetup(effectModule* module)
   }
 
   //codec setup
-  xTaskCreatePinnedToCore(codecsetup_task, "codecsetup_task", 4096, NULL, AUDIO_PROCESS_PRIORITY, NULL,0);
+  xTaskCreatePinnedToCore(codecsetup_task, "codecsetup_task", 4096, NULL, AUDIO_PROCESS_PRIORITY-1, NULL,0);
 
   //assign the module to control and start it
   _control.module = _module;
-  _control.init(P1_PIN,P2_PIN,P3_PIN,P4_PIN,P5_PIN,P6_PIN,AUDIO_PROCESS_PRIORITY);
-  xTaskCreatePinnedToCore(button_task, "button_task", 4096, NULL, AUDIO_PROCESS_PRIORITY, NULL,0);
+  _control.init(P1_PIN,P2_PIN,P3_PIN,P4_PIN,P5_PIN,P6_PIN,AUDIO_PROCESS_PRIORITY-1);
+  
+  //decoding button press on main button port and encoder port
+  xTaskCreatePinnedToCore(button_task, "button_task", 4096, NULL, AUDIO_PROCESS_PRIORITY-1, NULL,0);
 
   i2s_setup();
+  //the main audio task, dedicated on core 1
   xTaskCreatePinnedToCore(i2s_task, "i2s_task", 4096, NULL, AUDIO_PROCESS_PRIORITY, NULL,1);
+  
+  //audio frame moitoring task
   xTaskCreatePinnedToCore(framecounter_task, "i2s_task", 4096, NULL, AUDIO_PROCESS_PRIORITY, NULL,0);
   
-  //run eeprom service
-  xTaskCreatePinnedToCore(eepromsetup_task, "eepromsetup_task", 4096, NULL, AUDIO_PROCESS_PRIORITY, NULL,0);
+  //run eeprom service to manage saving some parameter control change in limited update frequency to save the flash from aging
+  xTaskCreatePinnedToCore(eepromsetup_task, "eepromsetup_task", 4096, NULL, AUDIO_PROCESS_PRIORITY-1, NULL,0);
 }
 
 void enableBleTerminal(void)
