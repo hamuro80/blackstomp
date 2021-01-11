@@ -133,6 +133,7 @@ void setup()
   runSystemMonitor(38400, 2000);
 }
 
+//Arduino core loop
 //let the main loop empty to dedicate the core 1 for the main audio task
 void loop() {
 
