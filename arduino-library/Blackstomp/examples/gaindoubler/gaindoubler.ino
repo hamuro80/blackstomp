@@ -5,7 +5,7 @@ class gainDoubler:public effectModule
 {
   private:
   float gain;
-  float gainRange;
+  float gainRange; 
   
   public:
   void init();
@@ -20,22 +20,31 @@ void gainDoubler::init()
 {
   //define your effect name
   name = "GAIN DOUBLER";
-
+ 
   //define the input mode (IM_LR or IM_LMIC) 
   inputMode = IM_LR;
-
+ 
   //setting up the buttons
+  //setup the first button as toggle button
   button[0].mode = BM_TOGGLE;
+  
+  //enable encoder port for buttons
   encoderMode = EM_BUTTONS;
+ 
+  //setup the second button as tap tempo button
   button[1].mode = BM_TAPTEMPO;
   button[1].min = 50;
   button[1].max = 2000;
+ 
+  //setup the third button as temporary button
   button[2].mode = BM_MOMENTARY;
 
+  //add gain control
   control[0].name = "Gain";
   control[0].mode = CM_POT;
   control[0].levelCount = 128;
 
+  //add range control
   control[1].name = "Range";
   control[1].mode = CM_SELECTOR;
   control[1].levelCount = 3;
