@@ -73,7 +73,6 @@ void micMixer::deInit()
 ////////////////////////////////////////////////////////////////////////
 void micMixer::onControlChange(int controlIndex)
 {
-  Serial.printf("%s : %d\r\n",control[controlIndex].name.c_str(),control[controlIndex].value);
   switch(controlIndex)
   {
     case 0: //mic gain
@@ -130,32 +129,12 @@ void micMixer::process(float* inLeft, float* inRight, float* outLeft, float* out
 micMixer  myPedal;
 
 //setup the effect modules by calling blackstompSetup() inside arduino core's setup()
-void setup() {
- //Serial communication
-  Serial.begin(9600);
-
+void setup() {;
   //SETTING UP THE EFFECT MODULE
   blackstompSetup(&myPedal);
 }
 
-//do repetitive task here (for debugging info only)
+//let the main loop empty to dedicate the core 1 for the main audio task
 void loop() {
-  //Uncomment to show the system info (might introduce some audible noise on the output)
-  /*
-  //System info
-  Serial.printf("\nSYSTEM INFO:\n");
-  Serial.printf("Internal Total heap %d, internal Free Heap %d\n",ESP.getHeapSize(),ESP.getFreeHeap());
-  Serial.printf("SPIRam Total heap %d, SPIRam Free Heap %d\n",ESP.getPsramSize(),ESP.getFreePsram());
-  Serial.printf("ChipRevision %d, Cpu Freq %d, SDK Version %s\n",ESP.getChipRevision(), ESP.getCpuFreqMHz(), ESP.getSdkVersion());
-  Serial.printf("Flash Size %d, Flash Speed %d\n",ESP.getFlashChipSize(), ESP.getFlashChipSpeed());
-  
-  //Blackstomp application info
-  Serial.printf("\nAPPLICATION INFO:\n");
-  Serial.printf("Pedal Name: %s\n",myPedal.name.c_str());
-  Serial.printf("Audio frame per second: %d fps\n",getAudioFps());
-  Serial.printf("CPU ticks per frame period: %d\n",getTotalCpuTicks());
-  Serial.printf("Used CPU ticks: %d\n",getUsedCpuTicks());
-  Serial.printf("CPU Usage: %.2f %%\n", 100.0*getCpuUsage());
-  */
-  vTaskDelay(1000);
+ 
 }

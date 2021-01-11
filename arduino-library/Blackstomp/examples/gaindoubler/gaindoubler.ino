@@ -32,7 +32,11 @@ void gainDoubler::init()
   button[1].max = 2000;
   button[2].mode = BM_MOMENTARY;
 
+  control[0].name = "Gain";
   control[0].mode = CM_POT;
+  control[0].levelCount = 128;
+
+  control[1].name = "Range";
   control[1].mode = CM_SELECTOR;
   control[1].levelCount = 3;
 
@@ -111,11 +115,16 @@ void gainDoubler::process(float* inLeft, float* inRight, float* outLeft, float* 
 gainDoubler myPedal;
 void setup()
 {
+  //setting up the effect module
   blackstompSetup(&myPedal);
+
+  //run system monitor at 38400 baud rat, at 2000 ms update period
+  //don't call this function when MIDI is implemented
+  //try lowering the baudrate if audible noise is introduced on some boards
+  runSystemMonitor(38400, 2000);
 }
 
-//Arduino core loop
-void loop()
-{
+//let the main loop empty to dedicate the core 1 for the main audio task
+void loop() {
 
 }

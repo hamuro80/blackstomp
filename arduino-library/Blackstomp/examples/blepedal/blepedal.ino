@@ -132,7 +132,7 @@ void setup() {
   enableBleTerminal();
 }
 
-//do repetitive task here (for debugging info only)
+//let the main loop empty to dedicate the core 1 for the main audio task
 void loop() {
-  vTaskDelay(1000);
+
 }

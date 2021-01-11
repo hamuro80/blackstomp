@@ -191,7 +191,7 @@ void setup() {
   xTaskCreatePinnedToCore(midiTask, "midiTask",4096,NULL,9,NULL,0);
 }
 
-//do repetitive task here (for debugging info only)
+//let the main loop empty to dedicate the core 1 for the main audio task
 void loop() {
 
 }

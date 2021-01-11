@@ -479,7 +479,6 @@ void eepromupdate_task(void* arg)
       EEPROM.commit();
       eepromrequestupdate = false;
       _control.unsavedchanges = false;
-      Serial.printf("EEPROM update!\n");
     }
     vTaskDelay(2000);
   }
@@ -575,14 +574,14 @@ void blackstompSetup(effectModule* module)
   }
 
   //codec setup
-  xTaskCreatePinnedToCore(codecsetup_task, "codecsetup_task", 4096, NULL, AUDIO_PROCESS_PRIORITY-1, NULL,0);
+  xTaskCreatePinnedToCore(codecsetup_task, "codecsetup_task", 4096, NULL, AUDIO_PROCESS_PRIORITY, NULL,0);
 
   //assign the module to control and start it
   _control.module = _module;
-  _control.init(P1_PIN,P2_PIN,P3_PIN,P4_PIN,P5_PIN,P6_PIN,AUDIO_PROCESS_PRIORITY-1);
+  _control.init(P1_PIN,P2_PIN,P3_PIN,P4_PIN,P5_PIN,P6_PIN,AUDIO_PROCESS_PRIORITY);
   
   //decoding button press on main button port and encoder port
-  xTaskCreatePinnedToCore(button_task, "button_task", 4096, NULL, AUDIO_PROCESS_PRIORITY-1, NULL,0);
+  xTaskCreatePinnedToCore(button_task, "button_task", 4096, NULL, AUDIO_PROCESS_PRIORITY, NULL,0);
 
   i2s_setup();
   //the main audio task, dedicated on core 1
@@ -592,7 +591,51 @@ void blackstompSetup(effectModule* module)
   xTaskCreatePinnedToCore(framecounter_task, "framecounter_task", 4096, NULL, AUDIO_PROCESS_PRIORITY, NULL,0);
   
   //run eeprom service to manage saving some parameter control change in limited update frequency to save the flash from aging
-  xTaskCreatePinnedToCore(eepromsetup_task, "eepromsetup_task", 4096, NULL, AUDIO_PROCESS_PRIORITY-1, NULL,0);
+  xTaskCreatePinnedToCore(eepromsetup_task, "eepromsetup_task", 4096, NULL, AUDIO_PROCESS_PRIORITY, NULL,0);
+}
+
+void sysmon_task(void *arg)
+{
+	int* period = (int*)(arg);
+	while(true)
+	{
+	  //System info
+	  Serial.printf("\nSYSTEM INFO:\n");
+	  Serial.printf("Internal Total heap %d, internal Free Heap %d\n",ESP.getHeapSize(),ESP.getFreeHeap());
+	  Serial.printf("SPIRam Total heap %d, SPIRam Free Heap %d\n",ESP.getPsramSize(),ESP.getFreePsram());
+	  Serial.printf("ChipRevision %d, Cpu Freq %d, SDK Version %s\n",ESP.getChipRevision(), ESP.getCpuFreqMHz(), ESP.getSdkVersion());
+	  Serial.printf("Flash Size %d, Flash Speed %d\n",ESP.getFlashChipSize(), ESP.getFlashChipSpeed());
+	  
+	  //Blackstomp application info
+	  Serial.printf("\nAPPLICATION INFO:\n");
+	  Serial.printf("Pedal Name: %s\n",_module->name.c_str());
+	  Serial.printf("Audio frame per second: %d fps\n",getAudioFps());
+	  Serial.printf("CPU ticks per frame period: %d\n",getTotalCpuTicks());
+	  Serial.printf("Used CPU ticks: %d\n",getUsedCpuTicks());
+	  Serial.printf("CPU Usage: %.2f %%\n", 100.0*getCpuUsage());
+	  for(int i=0;i<6;i++)
+	  {
+		  if(_module->control[i].mode != CM_DISABLED)
+			Serial.printf("CTRL-%d %s: %d\n",i,_module->control[i].name.c_str(),_module->control[i].value);
+	  }
+	  for(int i=0;i<4;i++)
+	  {
+		  if(_module->button[i].mode != CM_DISABLED)
+			Serial.printf("BUTTON-%d: %d\n",i,_module->button[i].value);
+	  }
+ 
+	  vTaskDelay(period[0]);
+	}
+	vTaskDelete(NULL);
+}
+
+int _updatePeriod;
+void runSystemMonitor(int baudRate, int updatePeriod)
+{
+	Serial.begin(baudRate);
+	_updatePeriod = updatePeriod;
+	//run the performance monitoring task at 0 (idle) priority
+	xTaskCreatePinnedToCore(sysmon_task, "sysmon_task", 4096, &_updatePeriod, 0, NULL,0);
 }
 
 void enableBleTerminal(void)

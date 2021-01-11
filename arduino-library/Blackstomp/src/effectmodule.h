@@ -118,15 +118,15 @@ class effectModule
   //you have to write all deallocatoin in the deInit() function of the  descendant class for any deallocation
   virtual void deInit(){};
 
-  //you have to write the following event handler functions in your descendant class
+  //you have to overload the following event handler functions in your descendant class when its needed
   virtual void onControlChange(int controlIndex){};
   virtual void onButtonChange(int buttonIndex){};
   virtual void onButtonPress(int buttonIndex){};
   virtual void onButtonRelease(int buttonIndex){};
   virtual void onBleTerminalRequest(const char* request, char* response){};
 
-  //you have to overload with your own process() function in your descendant class
-  virtual void process(float* inLeft, float* inRight, float* outLeft, float* outRight, int sampleCount){};
+  //you have to always overload with your own process() function in your descendant class
+  virtual void process(float* inLeft, float* inRight, float* outLeft, float* outRight, int sampleCount)=0;
 
 };
 

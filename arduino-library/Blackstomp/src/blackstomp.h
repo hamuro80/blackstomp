@@ -83,4 +83,9 @@ float getCpuUsage();
 
 //audio frames per second
 int getAudioFps();     
+
+//run system monitor on serial port, can be called on arduino setup
+//don't call this function when MIDI is implemented
+void runSystemMonitor(int baudRate, int updatePeriod);
+
 #endif
