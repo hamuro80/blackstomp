@@ -1,6 +1,6 @@
 # BLACKSTOMP
 * Description: A quick development platform for ESP32-A1S digital audio effect processor!
-* Version: 2.0
+* Version: 2.1
 
 # Features
 - Dual core 240MHz Tensilica Xtensa LX-6
@@ -22,7 +22,7 @@
 - Mic Mixer
 - Gain Doubler
 
-# Latest Known Issues (V2.0)
+# Latest Known Issues (V2.1)
 * In V1.3 or lower, rapid control change might cause system restart by interrupt wdt reset failure
   + This bug is not always reproducible, but it often hapens on a noisy boards.
   + The condition when it happens: rapid control changes, direct access of Serial port from inside  Process, onButtonChange, and onControlChange functions
@@ -35,6 +35,7 @@
 - Provide BLE terminal client app and implement debug monitoring API via BLE, so the Serial port can be dedicated for MIDI
 
 # Change History
+* Version 2.1 Edited Gain Doubler sketch example to synchronize with the manual document.
 * Version 2.0
   + All sketches in the example now left the main loop empty to dedicate core 1 for audio processing task
   + Performance monitoring method runSystemMonitor has been added to the API, can be called after blackstompSetup when MIDI is not implemented
