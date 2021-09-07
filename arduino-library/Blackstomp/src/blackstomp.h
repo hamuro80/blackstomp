@@ -28,16 +28,13 @@
 #ifndef BLACKSTOMP_H_
 #define BLACKSTOMP_H_
 
-//uncomment the following #define line to use APLL at 6MHZ MCLK
-//#define USE_APLL_MCLK_6M
-
 #define SAMPLE_RATE     (44100)
-
 #include "bsdsp.h"
 #include "effectmodule.h"
 #include "control.h"
 #include "ledindicator.h"
 #include "btterminal.h"
+#include "codec.h"
 
 //BLACKSTOMP'S SYSTEM API
 
@@ -45,20 +42,18 @@
 //should be called inside arduino platform's setup()
 void blackstompSetup(effectModule* module); 
 
+//Set device type (currently supported types: DT_ESP32_A1S_AC101 (DEFAULT) and DT_ESP32_A1S_ES8388)
+void setDeviceType(DEVICE_TYPE dt);
+
 //enable BLE (bluetooth low energy) terminal, 
 //should be called (if needed) ater blackstompSetup() inside arduino platform's setup()
 void enableBleTerminal(void);
 
 //set the output level (analog gain)
-void setOutVol(int vol); //vol = 0-31
+void setOutVol(int vol); //vol = 0-32
 
 //get the output level (analog gain)
-int  getOutVol(); //return 0-31
-
-//set the output mode for left and right channel,
-//if true then the output will contain the mix of left and right signal of the effect outputs
-//or of the inputs when the effect is bypassed
-bool setOutMix(bool mixedLeft, bool mixedRight);
+int  getOutVol(); //return 0-32
 
 //set microphone gain (0:0dB,1-7:30dB-48dB)
 void setMicGain(int gain);
@@ -67,10 +62,10 @@ void setMicGain(int gain);
 int getMicGain(); 
 
 //bypassed the analog input to the output, disconnect the digital i/o 
-bool analogBypass(bool bypass);  
+bool analogBypass(bool bypass, BYPASS_MODE bm=BM_LR);  
 
 //bypassed the analog input to the output, disconnect the digital input, preserve the digital output connection
-bool analogSoftBypass(bool bypass);  
+bool analogSoftBypass(bool bypass, BYPASS_MODE bm=BM_LR);
 
 //Total available Cpu ticks for aduio frame processing
 int getTotalCpuTicks(); 
@@ -87,5 +82,11 @@ int getAudioFps();
 //run system monitor on serial port, can be called on arduino setup
 //don't call this function when MIDI is implemented
 void runSystemMonitor(int baudRate, int updatePeriod);
+
+//set debug string (to be shown in the system monitor when it runs)
+void setDebugStr(const char* str);
+
+//set debug variables (to be shown in the system monitor when it runs)
+void setDebugVars(float val1, float val2=0, float val3=0, float val4=0);
 
 #endif

@@ -1,6 +1,6 @@
 # BLACKSTOMP
 * Description: A quick development platform for ESP32-A1S digital audio effect processor!
-* Version: 2.1
+* Version: 3.0
 
 # Features
 - Dual core 240MHz Tensilica Xtensa LX-6
@@ -21,20 +21,16 @@
 - MIDI Pedal
 - Mic Mixer
 - Gain Doubler
-
-# Latest Known Issues (V2.1)
-* In V1.3 or lower, rapid control change might cause system restart by interrupt wdt reset failure
-  + This bug is not always reproducible, but it often hapens on a noisy boards.
-  + The condition when it happens: rapid control changes, direct access of Serial port from inside  Process, onButtonChange, and onControlChange functions
-* Version 2.0 tried to fix the issues but don't know if it really solve it, however it is done by:
-  + Avoiding any direct access to Serial port from inside the Process, onButtonCahange, and onControlChange functions
-  + Emptying the main loop from monitoring codes, moving them to separate task on core 0 and provide the API
  
 # TODO List
-- Provide API to print debug message from inside the Process, onButtonChange, and onControlChange functions without direct Serial access
 - Provide BLE terminal client app and implement debug monitoring API via BLE, so the Serial port can be dedicated for MIDI
+- Provide implementation of multi-button mode of the encoder input
 
 # Change History
+* Version 3.0 
+  + Adding support for both AC101 version and the new ES8388 version of the ESP32-A1S module
+  + Removing setOutMix(false,true) API function
+  + Adding new bypass mode parameter for analogBypass() and analogSoftBypass() API function
 * Version 2.1 Edited Gain Doubler sketch example to synchronize with the manual document.
 * Version 2.0
   + All sketches in the example now left the main loop empty to dedicate core 1 for audio processing task

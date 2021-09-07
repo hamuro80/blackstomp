@@ -26,11 +26,12 @@
  */
   
 #include "blackstomp.h"
-#include "ac101.h"
+//#include "ac101.h"
 #include "driver/i2s.h"
 #include "esp_task_wdt.h"
 #include "math.h"
 #include "EEPROM.h"
+#include "codec.h"
 
 //CONTROL INPUT
 #define P1_PIN  39
@@ -56,15 +57,27 @@
 #define SCK_PIN 22
 #define SDA_PIN 21
 
-//AC101 AUDIO CODEC PIN SETUP
+//ESP32-A1S-AC101 PIN SETUP
 #define I2S_NUM         (0)
 #define I2S_MCLK        (GPI_NUM_0)
 #define I2S_BCK_IO      (GPIO_NUM_27)
 #define I2S_WS_IO       (GPIO_NUM_26)
 #define I2S_DO_IO       (GPIO_NUM_25)
 #define I2S_DI_IO       (GPIO_NUM_35)
-#define CODEC_SCK       (GPIO_NUM_32)
-#define CODEC_SDA       (GPIO_NUM_33)
+
+#define AC101_SDA		(GPIO_NUM_33)
+#define AC101_SCK		(GPIO_NUM_32)
+#define AC101_ADDR 		0x1A
+
+//ESP32-A1S-ES8388 PIN SETUP
+#define I2S_BCK_IO_ES	(GPIO_NUM_5)
+#define I2S_WS_IO_ES    (GPIO_NUM_25)
+#define I2S_DI_IO_ES    (GPIO_NUM_35)
+#define I2S_DO_IO_ES     (GPIO_NUM_26)
+
+#define ES8388_SDA		(GPIO_NUM_18)
+#define ES8388_SCK		(GPIO_NUM_23)
+#define ES8388_ADDR		0x10
 
 //audio processing frame length in samples (L+R) 64 samples (32R+32L) 256 Bytes
 #define FRAMELENGTH    64
@@ -83,7 +96,13 @@
 #define DMABUFFERCOUNT  20
 
 //codec instance
-static AC101 _codec;
+//static AC101 _codec;
+static codec* _acodec;
+//static bool _es8388Mode = false;
+DEVICE_TYPE _deviceType = DT_ESP32_A1S_AC101;
+static uint8_t _codecAddress = 0;
+static bool _muteLeftAdcIn = false;
+static bool _muteRightAdcIn = false;
 
 //effect module pointer
 static effectModule* _module = NULL;
@@ -117,6 +136,8 @@ static unsigned int usedticks_start;
 static unsigned int usedticks_end;
 static volatile unsigned int processedframe;
 static unsigned int audiofps;
+static char* debugStringPtr = "None";
+static float debugVars[]={0,0,0,0};
 
 static unsigned long eepromupdatetime = 0;
 static bool eepromrequestupdate = false;
@@ -137,6 +158,24 @@ void framecounter_task(void* arg)
     vTaskDelay(1000);
   }
   vTaskDelete(NULL);
+}
+
+void setDebugStr(const char* str)
+{
+	debugStringPtr = (char*) str;
+}
+
+void setDeviceType(DEVICE_TYPE dt)
+{
+	_deviceType = dt;
+}
+
+void setDebugVars(float val1, float val2, float val3, float val4)
+{
+	debugVars[0]=val1;
+	debugVars[1]=val2;
+	debugVars[2]=val3;
+	debugVars[3]=val4;
 }
 
 void i2s_task(void* arg)
@@ -169,7 +208,7 @@ void i2s_task(void* arg)
 
     if(_control.runningTicks < 1000) //silence the signal during the first 1000 ms startup
     {
-      for(int i=0,k=0;k<SAMPLECOUNT;k++,i+=2)
+      for(int k=0;k<SAMPLECOUNT;k++)
       {
         inleft[k] = 0;  
         inright[k] = 0;
@@ -178,13 +217,23 @@ void i2s_task(void* arg)
     else 
     for(int i=0,k=0;k<SAMPLECOUNT;k++,i+=2)
     {
-      //convert to 24 bit int then to float
-      inleft[k] = (float) (inbuffer[i]>>8);
-      inright[k] = (float) (inbuffer[i+1]>>8);
-
-      //scale to 1.0
-      inleft[k] = inleft[k]/8388608;
-      inright[k]=inright[k]/8388608;
+		if(!_muteLeftAdcIn)
+		{
+		  //convert to 24 bit int then to float
+		  inleft[k] = (float) (inbuffer[i]>>8);
+		  //scale to 1.0
+		  inleft[k] = inleft[k]/8388608;
+		}
+		else inleft[k]=0;
+		
+		if(!_muteRightAdcIn)
+		{
+		  //convert to 24 bit int then to float
+		  inright[k] = (float) (inbuffer[i+1]>>8);
+		  //scale to 1.0
+		  inright[k]=inright[k]/8388608;
+		}
+		else inright[k] = 0;
     }
   
     //process the signal by the effect module
@@ -205,8 +254,6 @@ void i2s_task(void* arg)
       //saturate to signed 24bit range
       if(outright[k]>8388607) outright[k]=8388607;
       if(outright[k]<-8388607) outright[k]= -8388607;
-      
-      //convert to 32 bit int
       outbuffer[i] = ((int32_t) outleft[k])<<8;
       outbuffer[i+1] = ((int32_t) outright[k])<<8;
     }
@@ -223,64 +270,111 @@ void i2s_task(void* arg)
 
 void i2s_setup()
 {
-  i2s_config_t i2s_config;
-  i2s_config.mode =(i2s_mode_t) (I2S_MODE_MASTER | I2S_MODE_TX | I2S_MODE_RX);
-  i2s_config.sample_rate = SAMPLE_RATE;
-  i2s_config.bits_per_sample = (i2s_bits_per_sample_t) 32;
-  i2s_config.channel_format = I2S_CHANNEL_FMT_RIGHT_LEFT; //both channel
-  i2s_config.communication_format = (i2s_comm_format_t) I2S_COMM_FORMAT_I2S;
-  
-  i2s_config.dma_buf_count = DMABUFFERCOUNT;
-  i2s_config.dma_buf_len = DMABUFFERLENGTH;
+	i2s_config_t i2s_config;
+	i2s_config.mode =(i2s_mode_t) (I2S_MODE_MASTER | I2S_MODE_TX | I2S_MODE_RX);
+	i2s_config.sample_rate = SAMPLE_RATE;
+	i2s_config.bits_per_sample = (i2s_bits_per_sample_t) 32;
+	i2s_config.channel_format = I2S_CHANNEL_FMT_RIGHT_LEFT; //both channel
+	i2s_config.communication_format = (i2s_comm_format_t) I2S_COMM_FORMAT_I2S;
 
-#ifdef USE_APLL_MCLK_6M
-  i2s_config.use_apll = true;
-  i2s_config.fixed_mclk = 6000000; 
-  PIN_FUNC_SELECT(PERIPHS_IO_MUX_GPIO0_U, FUNC_GPIO0_CLK_OUT1);
-  WRITE_PERI_REG(PIN_CTRL, READ_PERI_REG(PIN_CTRL) & 0xFFFFFFF0);
-#else
-  i2s_config.use_apll = false;
-  i2s_config.fixed_mclk = 0; 
-#endif
-  
-  i2s_config.intr_alloc_flags = ESP_INTR_FLAG_LEVEL1 ;
-  i2s_driver_install((i2s_port_t)I2S_NUM, &i2s_config, 0, NULL);
-  
-  i2s_pin_config_t pin_config;
-  pin_config.bck_io_num = I2S_BCK_IO;
-  pin_config.ws_io_num = I2S_WS_IO;
-  pin_config.data_out_num = I2S_DO_IO;
-  pin_config.data_in_num = I2S_DI_IO;
-  
-  i2s_set_pin((i2s_port_t)I2S_NUM, &pin_config);
-  i2s_set_clk((i2s_port_t)I2S_NUM, SAMPLE_RATE, (i2s_bits_per_sample_t) 32, I2S_CHANNEL_STEREO);
+	i2s_config.dma_buf_count = DMABUFFERCOUNT;
+	i2s_config.dma_buf_len = DMABUFFERLENGTH;
+
+	if(_deviceType==DT_ESP32_A1S_ES8388)
+	{
+		i2s_config.use_apll = true;
+		i2s_config.fixed_mclk = 33868800;	//double speed mclk/lrck ratio = 384
+		PIN_FUNC_SELECT(PERIPHS_IO_MUX_GPIO0_U, FUNC_GPIO0_CLK_OUT1);
+		WRITE_PERI_REG(PIN_CTRL, READ_PERI_REG(PIN_CTRL) & 0xFFFFFFF0);
+	}
+	else if(_deviceType == DT_ESP32_A1S_AC101)
+	{
+		i2s_config.use_apll = false;
+		i2s_config.fixed_mclk = 0; 
+	}
+
+	i2s_config.intr_alloc_flags = ESP_INTR_FLAG_LEVEL1 ;
+	i2s_driver_install((i2s_port_t)I2S_NUM, &i2s_config, 0, NULL);
+
+	i2s_pin_config_t pin_config;
+	if(_deviceType == DT_ESP32_A1S_ES8388)
+	{
+	  pin_config.bck_io_num = I2S_BCK_IO_ES;
+	  pin_config.ws_io_num = I2S_WS_IO_ES;
+	  pin_config.data_out_num = I2S_DO_IO_ES;
+	  pin_config.data_in_num = I2S_DI_IO_ES;
+	}
+	else if(_deviceType==DT_ESP32_A1S_AC101)
+	{
+	  pin_config.bck_io_num = I2S_BCK_IO;
+	  pin_config.ws_io_num = I2S_WS_IO;
+	  pin_config.data_out_num = I2S_DO_IO;
+	  pin_config.data_in_num = I2S_DI_IO;
+	}
+
+	i2s_set_pin((i2s_port_t)I2S_NUM, &pin_config);
+	i2s_set_clk((i2s_port_t)I2S_NUM, SAMPLE_RATE, (i2s_bits_per_sample_t) 32, I2S_CHANNEL_STEREO);
 }
 
 void button_task(void* arg)
 {
   //state variables
-  int bpin[] = {FS_PIN, RE_BUTTON_PIN, RE_PHASE0_PIN, RE_PHASE1_PIN};
+  int bpin[4];
   int bstate[4];
   int bstatecounter[4];
   
-  //initialize pin mode
-  pinMode(FS_PIN,INPUT_PULLUP);
-  
-  if(_module->encoderMode != EM_DISABLED)
-  {
-    pinMode(RE_BUTTON_PIN, INPUT_PULLUP);
-    pinMode(RE_PHASE0_PIN, INPUT_PULLUP);
-    pinMode(RE_PHASE1_PIN, INPUT_PULLUP);
-  }
+	if(_deviceType == DT_ESP32_A1S_ES8388)
+	{
+		bpin[0]= RE_BUTTON_PIN;
+		bpin[1]= SDA_PIN;
+		bpin[2]= SCK_PIN;
+		
+		//disable the 4th button function
+		_module->button[3].mode = BM_DISABLED;
+		
+		//initialize pin mode
+		pinMode(bpin[0],INPUT_PULLUP); //main foot switch button
+		if(_module->encoderMode != EM_BUTTONS)
+		{
+			pinMode(bpin[1], INPUT_PULLUP);
+			pinMode(bpin[2], INPUT_PULLUP);
+		}
+	}
+	else if(_deviceType == DT_ESP32_A1S_AC101)
+	{
+		bpin[0]=FS_PIN;
+		bpin[1]=RE_BUTTON_PIN;
+		bpin[2]=RE_PHASE0_PIN;
+		bpin[3]=RE_PHASE1_PIN;
+		
+		//initialize pin mode
+		pinMode(FS_PIN,INPUT_PULLUP);
+		if(_module->encoderMode != EM_DISABLED)
+		{
+			pinMode(RE_BUTTON_PIN, INPUT_PULLUP);
+			pinMode(RE_PHASE0_PIN, INPUT_PULLUP);
+			pinMode(RE_PHASE1_PIN, INPUT_PULLUP);
+		}
+	}
 
   for(int i=0;i<4;i++)
   {
     bstate[i]=0;
     bstatecounter[i] = 0;
   }
+  
   static int bcount = 1;
-  if(_module->encoderMode == EM_BUTTONS)
-    bcount = 4;
+	if(_module->encoderMode == EM_BUTTONS)
+	{
+		if(_deviceType==DT_ESP32_A1S_ES8388)
+		{
+			bcount = 3;
+		}
+		else if(_deviceType==DT_ESP32_A1S_AC101)
+		{
+			bcount = 4;
+		}
+	}
   static int tempocounter = 0;
   while(true)
   {
@@ -437,23 +531,33 @@ void button_task(void* arg)
 }
 
 void codecsetup_task(void* arg)
-{
-  _codec.setup(CODEC_SDA, CODEC_SCK);
-  _codecIsReady = true;
+{	
+	if(_deviceType==DT_ESP32_A1S_AC101)
+	{
+		codecBusInit(AC101_SDA, AC101_SCK, 400000);
+		_codecAddress = AC101_ADDR;
+		
+		_acodec = new AC101Codec();
+		_acodec->setInputMode(_module->inputMode);
+		bool res = _acodec->init(_codecAddress);
+		_acodec->muteLeftAdcIn = &_muteLeftAdcIn;
+		_acodec->muteRightAdcIn = &_muteRightAdcIn;
+	}
+	else if(_deviceType==DT_ESP32_A1S_ES8388)
+	{
+		codecBusInit(ES8388_SDA,ES8388_SCK, 32000);
+		_codecAddress = ES8388_ADDR;
+		
+		_acodec = new ES8388Codec();
+		_acodec->setInputMode(_module->inputMode);
+		bool res = _acodec->init(_codecAddress);
+		_acodec->muteLeftAdcIn = &_muteLeftAdcIn;
+		_acodec->muteRightAdcIn = &_muteRightAdcIn;
+		setDebugVars(_codecAddress);
+	}
+	_codecIsReady = true;
 
-  //setting up the input mode
-  if(_module->inputMode == IM_LR)
-  {
-    _codec.LeftLineLeft(true);
-    _codec.RightLineRight(true);
-  }
-  else
-  {
-    _codec.LeftLineLeft(true);
-    _codec.RightMic1(true);
-  }
-  
-  vTaskDelete(NULL);
+	vTaskDelete(NULL);
 }
 
 void eepromupdate_task(void* arg)
@@ -527,6 +631,25 @@ void eepromsetup_task(void* arg)
   vTaskDelete(NULL);
 }
 
+/*
+void codec_detect_task(void* arg)
+{
+	//detect codec chip
+	
+	_codecAddress = codecDetect(AC101_SDA, AC101_SCK, 400000 );
+	if(_codecAddress>0)
+	{
+		_es8388Mode = false;
+	}
+	else
+	{
+		_es8388Mode = true;
+		_codecAddress = codecDetect(ES8388_SDA, ES8388_SCK, 33000);
+	}
+	vTaskDelete(NULL);
+}
+* */
+
 void blackstompSetup(effectModule* module) 
 {
   //init the LED indicator
@@ -572,26 +695,28 @@ void blackstompSetup(effectModule* module)
 		  }
 	  }
   }
+	
+	//setup the i2S 
+	i2s_setup();
+	//the main audio task, dedicated on core 1
+	xTaskCreatePinnedToCore(i2s_task, "i2s_task", 4096, NULL, AUDIO_PROCESS_PRIORITY, NULL,1);
+	delay(100);
 
-  //codec setup
-  xTaskCreatePinnedToCore(codecsetup_task, "codecsetup_task", 4096, NULL, AUDIO_PROCESS_PRIORITY, NULL,0);
+	//codec setup
+	xTaskCreatePinnedToCore(codecsetup_task, "codecsetup_task", 4096, NULL, AUDIO_PROCESS_PRIORITY, NULL,0);
 
-  //assign the module to control and start it
-  _control.module = _module;
-  _control.init(P1_PIN,P2_PIN,P3_PIN,P4_PIN,P5_PIN,P6_PIN,AUDIO_PROCESS_PRIORITY);
-  
-  //decoding button press on main button port and encoder port
-  xTaskCreatePinnedToCore(button_task, "button_task", 4096, NULL, AUDIO_PROCESS_PRIORITY, NULL,0);
+	//assign the module to control and start it
+	_control.module = _module;
+	_control.init(P1_PIN,P2_PIN,P3_PIN,P4_PIN,P5_PIN,P6_PIN,AUDIO_PROCESS_PRIORITY);
 
-  i2s_setup();
-  //the main audio task, dedicated on core 1
-  xTaskCreatePinnedToCore(i2s_task, "i2s_task", 4096, NULL, AUDIO_PROCESS_PRIORITY, NULL,1);
-  
-  //audio frame moitoring task
-  xTaskCreatePinnedToCore(framecounter_task, "framecounter_task", 4096, NULL, AUDIO_PROCESS_PRIORITY, NULL,0);
-  
-  //run eeprom service to manage saving some parameter control change in limited update frequency to save the flash from aging
-  xTaskCreatePinnedToCore(eepromsetup_task, "eepromsetup_task", 4096, NULL, AUDIO_PROCESS_PRIORITY, NULL,0);
+	//decoding button press on main button port and encoder port
+	xTaskCreatePinnedToCore(button_task, "button_task", 4096, NULL, AUDIO_PROCESS_PRIORITY, NULL,0);
+
+	//audio frame moitoring task
+	xTaskCreatePinnedToCore(framecounter_task, "framecounter_task", 4096, NULL, AUDIO_PROCESS_PRIORITY, NULL,0);
+
+	//run eeprom service to manage saving some parameter control change in limited update frequency to save the flash from aging
+	xTaskCreatePinnedToCore(eepromsetup_task, "eepromsetup_task", 4096, NULL, AUDIO_PROCESS_PRIORITY, NULL,0);
 }
 
 void sysmon_task(void *arg)
@@ -623,7 +748,10 @@ void sysmon_task(void *arg)
 		  if(_module->button[i].mode != CM_DISABLED)
 			Serial.printf("BUTTON-%d: %d\n",i,_module->button[i].value);
 	  }
- 
+	  char debugstring[51];
+	  strncpy(debugstring,debugStringPtr,50);
+	  Serial.printf("Debug String: %s\n", debugstring);
+	  Serial.printf("Debug Variables: %g, %g, %g, %g\n", debugVars[0], debugVars[1], debugVars[2], debugVars[3]);
 	  vTaskDelay(period[0]);
 	}
 	vTaskDelete(NULL);
@@ -659,72 +787,18 @@ void enableBleTerminal(void)
 	btt->begin(dname.c_str(),su,cu,_module->bleTerminal.passKey,10);
 }
 
-bool analogBypass(bool bypass)
+bool analogBypass(bool bypass, BYPASS_MODE bm)
 {
     if(!_codecIsReady)
       return false;
-
-    //connect or disconnect the DAC output to output mixer
-    _codec.OmixerRightDacRight(!bypass);
-    _codec.OmixerLeftDacLeft(!bypass);
-
-    //connect or disconnect the ADC input
-     if(_module->inputMode == IM_LR)
-    {
-      _codec.LeftLineLeft(!bypass);
-      _codec.RightLineRight(!bypass);
-    }
-    else
-    {
-      _codec.LeftLineLeft(!bypass);
-      _codec.RightMic1(!bypass);
-    }
-
-    //connect/disconnect the line/mic input to output mixer
-    if(_module->inputMode == IM_LR)
-    {      
-      _codec.OmixerLeftLineLeft(bypass);
-      _codec.OmixerRightLineRight(bypass);
-
-    }
-    else //inputMode = IM_LMIC
-    {
-       _codec.OmixerRightMic1(bypass);
-       _codec.OmixerLeftLineLeft(bypass);
-    }
-    return true;
+    return _acodec->analogBypass(bypass, bm);
 }
 
-bool analogSoftBypass(bool bypass)
+bool analogSoftBypass(bool bypass, BYPASS_MODE bm)
 {
     if(!_codecIsReady)
       return false;
-      
-    //connect or disconnect the ADC input
-     if(_module->inputMode == IM_LR)
-    {
-      _codec.LeftLineLeft(!bypass);
-      _codec.RightLineRight(!bypass);
-    }
-    else
-    {
-      _codec.LeftLineLeft(!bypass);
-      _codec.RightMic1(!bypass);
-    }
-
-    //connect/disconnect the line/mic input to output mixer
-    if(_module->inputMode == IM_LR)
-    {      
-      _codec.OmixerLeftLineLeft(bypass);
-      _codec.OmixerRightLineRight(bypass);
-
-    }
-    else //inputMode = IM_LMIC
-    {
-       _codec.OmixerRightMic1(bypass);
-       _codec.OmixerLeftLineLeft(bypass);
-    }
-    return true;
+    return _acodec->analogSoftBypass(bypass, bm);
 }
 
 int getTotalCpuTicks()
@@ -749,25 +823,24 @@ int getAudioFps()
 
 void setMicGain(int gain)
 {
-  _codec.SetMicGain(gain);
+  //_codec.SetMicGain(gain);
+  _acodec->setMicGain(gain);
 }
 
 int getMicGain()
 {
-  return _codec.GetMicGain();
+  //return _codec.GetMicGain();
+  return _acodec->getMicGain();
 }
 
 void setOutVol(int vol)
 {
-  _codec.SetVolSpeaker(vol);
-}
-
-bool setOutMix(bool mixedLeft, bool mixedRight)
-{
-	return _codec.SetOutputMode(mixedLeft,mixedRight);
+  //_codec.SetVolSpeaker(vol);
+  _acodec->setOutVol(vol);
 }
 
 int getOutVol()
 {
-  return _codec.GetVolSpeaker();
+  //return _codec.GetVolSpeaker();
+  return _acodec->getOutVol();
 }

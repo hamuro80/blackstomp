@@ -53,6 +53,10 @@ class taptempoDelay:public effectModule
 ////////////////////////////////////////////////////////////////////////
 void taptempoDelay::init()
 {
+  //select the appropriate device by uncommenting one of the following two lines:
+  setDeviceType(DT_ESP32_A1S_AC101);
+  //setDeviceType(DT_ESP32_A1S_ES8388);
+  
   name = "TAP-TEMPO DELAY";
   inputMode = IM_LR;
 
@@ -141,15 +145,6 @@ void taptempoDelay::onControlChange(int controlIndex)
       feedbackGain = (float)control[2].value /127.0;
       break;
     }
-    case 3: //input mode
-    {
-      if(button[0].value==0) //if bypassed
-        if(control[3].value == 0) //if mono input
-          setOutMix(false,true); //set the right output to LR mix
-        else 
-          setOutMix(false,false); //set the right output to LR mix
-      break;
-    }
     case 4: //dry-wet balance
     {
       dryGain =  2*(127.0-(float)control[4].value)/127;
@@ -171,14 +166,11 @@ void taptempoDelay::onButtonChange(int buttonIndex)
       {
         analogSoftBypass(false);
         mainLed->turnOn();
-        setOutMix(false,false); //normalize stereo separation in case of mixed at bypass
       }
       else //if effect is bypassed
       {
         analogSoftBypass(true); 
         mainLed->turnOff();
-        if(control[3].value == 0) //if mono input
-          setOutMix(false,true); //set the right output to LR mix
       }
       break;
     }

@@ -49,6 +49,10 @@ class stereoChorus:public effectModule
 ////////////////////////////////////////////////////////////////////////
 void stereoChorus::init()
 { 
+  //select the appropriate device by uncommenting one of the following two lines:
+  setDeviceType(DT_ESP32_A1S_AC101);
+  //setDeviceType(DT_ESP32_A1S_ES8388);
+  
   //define your effect name
   name = "STEREO CHORUS";
 
