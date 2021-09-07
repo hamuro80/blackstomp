@@ -29,7 +29,7 @@
 # Change History
 * Version 3.0 
   + Adding setDeviceType() function to support for both AC101 version and the new ES8388 version of the ESP32-A1S module
-  + Removing setOutMix(false,true) API function
+  + Removing setOutMix() API function
   + Adding new bypass mode parameter for analogBypass() and analogSoftBypass() API function
 * Version 2.1 Edited Gain Doubler sketch example to synchronize with the manual document.
 * Version 2.0
