@@ -14,12 +14,11 @@ blink				KEYWORD2
 blinkUpdate			KEYWORD2
 init				KEYWORD2
 deInit				KEYWORD2
-
+setDeviceType  KEYWORD2
 blackstompSetup 	KEYWORD2
 enableBleTerminal	KEYWORD2
 setOutVol			KEYWORD2
 getOutVol			KEYWORD2
-setOutMix			KEYWORD2
 setMicGain			KEYWORD2
 getMicGain			KEYWORD2
 analogBypass		KEYWORD2
