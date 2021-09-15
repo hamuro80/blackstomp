@@ -28,7 +28,7 @@
 
 # Change History
 * Version 3.1
-  + Fixed uninitialized button pins
+  + Fixed uninitialized button pins for ES8388 version module
 * Version 3.0 
   + Adding setDeviceType() function to support for both AC101 version and the new ES8388 version of the ESP32-A1S module
   + Removing setOutMix() API function
