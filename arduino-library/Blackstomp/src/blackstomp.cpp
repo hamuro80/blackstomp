@@ -57,6 +57,17 @@
 #define SCK_PIN 22
 #define SDA_PIN 21
 
+//Digital input Generic Assignment
+#define D1_PIN_AC101	FS_PIN
+#define D2_PIN_AC101	RE_BUTTON_PIN
+#define D3_PIN_AC101	RE_PHASE0_PIN
+#define D4_PIN_AC101	RE_PHASE1_PIN
+
+#define D1_PIN_ES8388	RE_BUTTON_PIN
+#define D2_PIN_ES8388	SCK_PIN
+#define D3_PIN_ES8388	SDA_PIN
+
+
 //ESP32-A1S-AC101 PIN SETUP
 #define I2S_NUM         (0)
 #define I2S_MCLK        (GPI_NUM_0)
@@ -325,16 +336,16 @@ void button_task(void* arg)
   
 	if(_deviceType == DT_ESP32_A1S_ES8388)
 	{
-		bpin[0]= RE_BUTTON_PIN;
-		bpin[1]= SDA_PIN;
-		bpin[2]= SCK_PIN;
+		bpin[0]= D1_PIN_ES8388;
+		bpin[1]= D2_PIN_ES8388;
+		bpin[2]= D3_PIN_ES8388;
 		
 		//disable the 4th button function
 		_module->button[3].mode = BM_DISABLED;
 		
 		//initialize pin mode
 		pinMode(bpin[0],INPUT_PULLUP); //main foot switch button
-		if(_module->encoderMode != EM_BUTTONS)
+		if(_module->encoderMode == EM_BUTTONS)
 		{
 			pinMode(bpin[1], INPUT_PULLUP);
 			pinMode(bpin[2], INPUT_PULLUP);
@@ -342,18 +353,18 @@ void button_task(void* arg)
 	}
 	else if(_deviceType == DT_ESP32_A1S_AC101)
 	{
-		bpin[0]=FS_PIN;
-		bpin[1]=RE_BUTTON_PIN;
-		bpin[2]=RE_PHASE0_PIN;
-		bpin[3]=RE_PHASE1_PIN;
+		bpin[0]=D1_PIN_AC101;
+		bpin[1]=D2_PIN_AC101;
+		bpin[2]=D3_PIN_AC101;
+		bpin[3]=D4_PIN_AC101;
 		
 		//initialize pin mode
-		pinMode(FS_PIN,INPUT_PULLUP);
-		if(_module->encoderMode != EM_DISABLED)
+		pinMode(bpin[0],INPUT_PULLUP);
+		if(_module->encoderMode == EM_BUTTONS)
 		{
-			pinMode(RE_BUTTON_PIN, INPUT_PULLUP);
-			pinMode(RE_PHASE0_PIN, INPUT_PULLUP);
-			pinMode(RE_PHASE1_PIN, INPUT_PULLUP);
+			pinMode(bpin[1], INPUT_PULLUP);
+			pinMode(bpin[2], INPUT_PULLUP);
+			pinMode(bpin[3], INPUT_PULLUP);
 		}
 	}
 
@@ -630,25 +641,6 @@ void eepromsetup_task(void* arg)
   xTaskCreatePinnedToCore(eepromupdate_task, "eepromupdate_task", 4096, NULL, AUDIO_PROCESS_PRIORITY, NULL,0);
   vTaskDelete(NULL);
 }
-
-/*
-void codec_detect_task(void* arg)
-{
-	//detect codec chip
-	
-	_codecAddress = codecDetect(AC101_SDA, AC101_SCK, 400000 );
-	if(_codecAddress>0)
-	{
-		_es8388Mode = false;
-	}
-	else
-	{
-		_es8388Mode = true;
-		_codecAddress = codecDetect(ES8388_SDA, ES8388_SCK, 33000);
-	}
-	vTaskDelete(NULL);
-}
-* */
 
 void blackstompSetup(effectModule* module) 
 {
