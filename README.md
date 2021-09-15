@@ -1,6 +1,6 @@
 # BLACKSTOMP
 * Description: A quick development platform for ESP32-A1S digital audio effect processor!
-* Version: 3.0
+* Version: 3.1
 
 # Features
 - Dual core 240MHz Tensilica Xtensa LX-6
@@ -27,6 +27,8 @@
 - Provide implementation of multi-button mode of the encoder input
 
 # Change History
+* Version 3.1
+  + Fixed uninitialized button pins
 * Version 3.0 
   + Adding setDeviceType() function to support for both AC101 version and the new ES8388 version of the ESP32-A1S module
   + Removing setOutMix() API function
