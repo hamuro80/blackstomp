@@ -45,4 +45,3 @@
 
 # Documentation
 - Blackstomp hardware and software programming manual at https://www.deeptronic.com/blackstomp/
-- Blackstomp hardware circuit schematic diagram at https://www.deeptronic.com/blackstomp/schematic-diagram/
