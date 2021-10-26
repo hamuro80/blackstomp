@@ -11,8 +11,6 @@
 - Microphone input
 - Stereo input/output
 - MIDI input/output
-- Rotary encoder interface
-- I2C/OLED display interface
 
 # Available Sketches Example
 - Taptempo Stereo (Ping-Pong) Delay 
