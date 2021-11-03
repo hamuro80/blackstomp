@@ -54,21 +54,24 @@ class taptempoDelay:public effectModule
 void taptempoDelay::init()
 {
   //select the appropriate device by uncommenting one of the following two lines:
-  setDeviceType(DT_ESP32_A1S_AC101);
-  //setDeviceType(DT_ESP32_A1S_ES8388);
+  //setDeviceType(DT_ESP32_A1S_AC101);
+  setDeviceType(DT_ESP32_A1S_ES8388);
   
   name = "TAP-TEMPO DELAY";
   inputMode = IM_LR;
 
   control[0].name = "Time";
   control[0].mode = CM_POT;
-  control[0].levelCount = 200;  //0 = 10 ms, 199 = 2000 ms
+  //control[0].levelCount = 200;  //0 = 10 ms, 199 = 2000 ms
+  control[0].levelCount = 100;  //0 = 10 ms, 99 = 1000 ms
   control[0].value = 49; //500 ms
+  control[0].slowSpeed = true;
 
   control[2].name = "Repeat";  //feedback gain
   control[2].mode = CM_POT;
   control[2].levelCount = 128; 
   control[2].value = 64;
+  control[0].slowSpeed = true;
   
   //set up the controls
   control[3].name = "Input Mode";  //0:MONO, 1:STEREO
@@ -80,6 +83,7 @@ void taptempoDelay::init()
   control[4].mode = CM_POT;
   control[4].levelCount = 128;
   control[4].value = 64;
+  control[0].slowSpeed = true;
 
   control[5].name = "Output Mode";  //0:MONO, 1:STEREO
   control[5].mode = CM_SELECTOR;

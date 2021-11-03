@@ -1,12 +1,13 @@
 # BLACKSTOMP
 * Description: A quick development platform for ESP32-A1S digital audio effect processor!
-* Version: 3.1
+* Version: 3.2
 
 # Features
-- Dual core 240MHz Tensilica Xtensa LX-6
+- Dual core 240MHz Tensilica Xtensa LX-6 (32-bit processor with floating point unit)
 - WiFi and Bluetooth connectivity
-- 24-bit stereo codec with analog pass-through (for effect bypass)
-- Six control inputs (for potentiometers, pedal, button, or selector switch)
+- 24-bit stereo codec with analog pass-through bypass
+- Six control inputs (for potentiometers, expression pedal, button, or selector switch)
+- 3 buttons inputs (for foot switches)
 - Guitar input
 - Microphone input
 - Stereo input/output
@@ -22,9 +23,12 @@
  
 # TODO List
 - Provide BLE terminal client app and implement debug monitoring API via BLE, so the Serial port can be dedicated for MIDI
-- Provide implementation of multi-button mode of the encoder input
+- Provide implementation of multi-button mode of the control input
 
 # Change History
+* Version 3.2
+  + Added slowSpeed property in control object to suppress the internal noise of ES8388 version in CM_POT control mode
+  + Fixed some error in example scketches
 * Version 3.1
   + Fixed uninitialized button pins for ES8388 version module
 * Version 3.0 

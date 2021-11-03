@@ -45,8 +45,8 @@ class blePedal:public effectModule
 void blePedal::init()
 { 
   //select the appropriate device by uncommenting one of the following two lines:
-  setDeviceType(DT_ESP32_A1S_AC101);
-  //setDeviceType(DT_ESP32_A1S_ES8388);
+  //setDeviceType(DT_ESP32_A1S_AC101);
+  setDeviceType(DT_ESP32_A1S_ES8388);
   
   //define your effect name
   name = "BLE PEDAL";
@@ -58,6 +58,7 @@ void blePedal::init()
   control[0].name = "OUT LEVEL"; 
   control[0].mode = CM_POT;
   control[0].levelCount = 128; //(0-127)
+  control[0].slowSpeed = true;
 
   //set up the buttons
   button[0].mode = BM_TOGGLE;

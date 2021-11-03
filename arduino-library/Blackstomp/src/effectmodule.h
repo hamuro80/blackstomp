@@ -85,6 +85,7 @@ struct CONTROL
   int max;
   int levelCount;
   int value;
+  bool slowSpeed;
 };
 
 struct BLETERMINAL

@@ -50,8 +50,8 @@ class stereoChorus:public effectModule
 void stereoChorus::init()
 { 
   //select the appropriate device by uncommenting one of the following two lines:
-  setDeviceType(DT_ESP32_A1S_AC101);
-  //setDeviceType(DT_ESP32_A1S_ES8388);
+  //setDeviceType(DT_ESP32_A1S_AC101);
+  setDeviceType(DT_ESP32_A1S_ES8388);
   
   //define your effect name
   name = "STEREO CHORUS";
@@ -63,18 +63,21 @@ void stereoChorus::init()
   control[0].name = "Rate"; 
   control[0].mode = CM_POT;
   control[0].levelCount = 128; //(0-127)
+  control[0].slowSpeed = true;
 
   control[2].name = "Depth"; 
   control[2].mode = CM_POT;
   control[2].levelCount = 128; //(0-127)
+  control[2].slowSpeed = true;
 
   control[3].name = "Input Mode";
   control[3].mode = CM_SELECTOR;
-  control[3].levelCount = 2; //0:mono, 2:stereo
+  control[3].levelCount = 2; //0:mono, 1:stereo
 
   control[4].name = "F/P Diff"; 
   control[4].mode = CM_POT;
   control[4].levelCount = 128; //(0-127)
+  control[4].slowSpeed = true;
 
   control[5].name = "Sync Mode";
   control[5].mode = CM_SELECTOR;
@@ -123,10 +126,6 @@ void stereoChorus::onControlChange(int controlIndex)
     {
       if(button[0].value == 0) //effect is bypassed
       {
-        if(control[3].value) //if stereo input
-          setOutMix(false,false);
-        else //if mono input
-          setOutMix(false,true);
       }
       break;
     }
@@ -150,16 +149,11 @@ void stereoChorus::onButtonChange(int buttonIndex)
       {
         analogBypass(false);
         mainLed->turnOn();
-        //set the outputs to stereo
-        setOutMix(false,false);
       }
       else
       {
         analogBypass(true);
         mainLed->turnOff();
-        
-        if(control[3].value==0) //if mono input
-          setOutMix(false,true); //then set the right output as l-r mix of the input
       }
       break;
     }

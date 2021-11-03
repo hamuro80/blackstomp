@@ -42,6 +42,7 @@ class controlInterface
     ~controlInterface();
    private:
     biquadFilter* lpf[6];
+    biquadFilter* slowLpf[6];
     int controlPin[6];
     int controlState[6];
     int stateCounter[6];

@@ -43,7 +43,10 @@ void controltask(void *arg)
         float val = analogRead(con->controlPin[i]);
         if(con->module->control[i].inverted)
           val = 4095-val;
-        con->lpf[i]->process((const float*)&val, &val, 1);
+        if(con->module->control[i].slowSpeed)
+			con->slowLpf[i]->process((const float*)&val, &val, 1);
+		else 
+			con->lpf[i]->process((const float*)&val, &val, 1);
       }
       continue; //skip the routine
     }
@@ -59,10 +62,12 @@ void controltask(void *arg)
       //POTENTIOMETER CONTROL MODE
       if(con->module->control[i].mode == CM_POT)
       {
-        //filter the reading
-        con->lpf[i]->process((const float*)&val, &val, 1);
-        if(val != con->module->control[i].value) //the value has changed
-        {
+		//filter the reading
+		if(con->module->control[i].slowSpeed)
+			con->slowLpf[i]->process((const float*)&val, &val, 1);
+		else 
+			con->lpf[i]->process((const float*)&val, &val, 1);
+		
           int increment = 4096/con->module->control[i].levelCount;
           int position = val/increment;
           
@@ -89,7 +94,6 @@ void controltask(void *arg)
               con->module->onControlChange(i);
             }
           }
-        }
       }
       ////////////////////////////////////////////////////////////////////////////////
       //SELECTOR CONTROL MODE
@@ -302,11 +306,22 @@ controlInterface::controlInterface()
     const float coefficients[] = 
     {
       //these coefficients are calculated using online digital filter design tool https://www.micromodeler.com/dsp/
+      //10 Hz
       0.0009200498139105926, 0.0018400996278211852, 0.0009200498139105926, 1.8866095826215064, -0.8903397362840242, // b0, b1, b2, a1, a2
       0.0009765625, 0.001953125, 0.0009765625, 1.9492159580258417, -0.9530698953278909 //  b0, b1, b2, a1, a2
     };
-   
     lpf[i]->setCoef(coefficients);
+    
+    //fourth order filter setup 4 Hz cut off at 1k samples/s
+    slowLpf[i] = new biquadFilter(2);
+    const float coefficients2[] = 
+    {
+      //these coefficients are calculated using online digital filter design tool https://www.micromodeler.com/dsp/    
+      //4 Hz
+		0.00019772393992324234, 0.0003954478798464847, 0.00019772393992324234, 1.954001961679803, -0.9546192513864591,// b0, b1, b2, a1, a2
+		0.0001220703125, 0.000244140625, 0.0001220703125, 1.980323859118934, -0.9809494641889661// b0, b1, b2, a1, a2
+    };
+    slowLpf[i]->setCoef(coefficients2);
   }  
 }
 
@@ -315,6 +330,7 @@ controlInterface::~controlInterface()
   for(int i=0;i<6;i++)
   {
     delete lpf[i];
+    delete slowLpf[i];
   }
 }
 

@@ -46,6 +46,7 @@
     control[i].max = 127;
     control[i].levelCount = 128;
     control[i].inverted = false;
+    control[i].slowSpeed = false;
    }
 
    for(int i=0;i<4;i++)

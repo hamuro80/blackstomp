@@ -19,8 +19,8 @@ class gainDoubler:public effectModule
 void gainDoubler::init()  
 {
   //select the appropriate device by uncommenting one of the following two lines:
-  setDeviceType(DT_ESP32_A1S_AC101);
-  //setDeviceType(DT_ESP32_A1S_ES8388);
+  //setDeviceType(DT_ESP32_A1S_AC101);
+  setDeviceType(DT_ESP32_A1S_ES8388);
   
   //define your effect name
   name = "GAIN DOUBLER";
@@ -47,6 +47,7 @@ void gainDoubler::init()
   control[0].name = "Gain";
   control[0].mode = CM_POT;
   control[0].levelCount = 128;
+  control[0].slowSpeed = true;
 
   //add range control
   control[1].name = "Range";

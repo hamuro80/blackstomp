@@ -25,7 +25,7 @@
  * THE SOFTWARE.
  */
   
-#include "blackstomp.h"
+#include "blackstomp.h" 
 //#include "ac101.h"
 #include "driver/i2s.h"
 #include "esp_task_wdt.h"
@@ -815,24 +815,20 @@ int getAudioFps()
 
 void setMicGain(int gain)
 {
-  //_codec.SetMicGain(gain);
   _acodec->setMicGain(gain);
 }
 
 int getMicGain()
 {
-  //return _codec.GetMicGain();
   return _acodec->getMicGain();
 }
 
 void setOutVol(int vol)
 {
-  //_codec.SetVolSpeaker(vol);
   _acodec->setOutVol(vol);
 }
 
 int getOutVol()
 {
-  //return _codec.GetVolSpeaker();
   return _acodec->getOutVol();
 }

@@ -48,8 +48,8 @@ class midiPedal:public effectModule
 void midiPedal::init()
 { 
   //select the appropriate device by uncommenting one of the following two lines:
-  setDeviceType(DT_ESP32_A1S_AC101);
-  //setDeviceType(DT_ESP32_A1S_ES8388);
+  //setDeviceType(DT_ESP32_A1S_AC101);
+  setDeviceType(DT_ESP32_A1S_ES8388);
   
   //define your effect name
   name = "MIDI CONTROLLER";
@@ -78,6 +78,7 @@ void midiPedal::init()
   control[1].name = "Out Level"; 
   control[1].mode = CM_POT;
   control[1].levelCount = 128; //(0-127)
+  control[1].slowSpeed = true;
   
   control[2].name = "Channel";
   control[2].mode = CM_POT;

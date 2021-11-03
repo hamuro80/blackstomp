@@ -43,8 +43,8 @@ class micMixer:public effectModule
 void micMixer::init()
 {
   //select the appropriate device by uncommenting one of the following two lines:
-  setDeviceType(DT_ESP32_A1S_AC101);
-  //setDeviceType(DT_ESP32_A1S_ES8388);
+  //setDeviceType(DT_ESP32_A1S_AC101);
+  setDeviceType(DT_ESP32_A1S_ES8388);
   
   name = "MIC MIXER";
   inputMode = IM_LMIC;
@@ -58,6 +58,7 @@ void micMixer::init()
   control[2].mode = CM_POT;
   control[2].levelCount = 128; 
   control[2].value = 64;
+  control[2].slowSpeed = true;
   
   //setup the buttons
   //main button
@@ -65,7 +66,6 @@ void micMixer::init()
 
   //other initialization
   micLevel = 1;
-  setMicGain(0);
 } 
 
 ////////////////////////////////////////////////////////////////////////
