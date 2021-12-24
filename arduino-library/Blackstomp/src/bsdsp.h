@@ -76,10 +76,13 @@ class oscillator
 	private:
 	float phaseincrement;
 	float phase;
+	const float* waveTable;
 	
 	public:
 	oscillator();
 	void setFrequency(float freq);
+	void setPhase(float p);  //(0.00 <= p <= 255.0)
+	void setWaveTable(const float* wtable);
   
   //update the internal phase to the current sampling period
 	void update(); 

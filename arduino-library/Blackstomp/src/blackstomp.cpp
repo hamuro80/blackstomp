@@ -118,6 +118,7 @@ static bool _muteRightAdcIn = false;
 //effect module pointer
 static effectModule* _module = NULL;
 bool _codecIsReady = false;
+static float _outCorrectionGain = 1;
 
 //controlInterface pointer
 static controlInterface _control;
@@ -255,13 +256,13 @@ void i2s_task(void* arg)
     for(int i=0,k=0;k<SAMPLECOUNT;k++,i+=2)
     {
       //scale the left output to 24 bit range
-      outleft[k] = outleft[k]*8388607;
+      outleft[k] = _outCorrectionGain * outleft[k] * 8388607;
       //saturate to signed 24bit range
       if(outleft[k]>8388607) outleft[k]=8388607;
       if(outleft[k]<-8388607) outleft[k]= -8388607;
 
       //scale the right output to 24 bit range
-      outright[k]=outright[k]*8388607;
+      outright[k]=_outCorrectionGain * outright[k] * 8388607;
       //saturate to signed 24bit range
       if(outright[k]>8388607) outright[k]=8388607;
       if(outright[k]<-8388607) outright[k]= -8388607;
@@ -553,6 +554,7 @@ void codecsetup_task(void* arg)
 		bool res = _acodec->init(_codecAddress);
 		_acodec->muteLeftAdcIn = &_muteLeftAdcIn;
 		_acodec->muteRightAdcIn = &_muteRightAdcIn;
+		_outCorrectionGain = _acodec->outCorrectionGain;
 	}
 	else if(_deviceType==DT_ESP32_A1S_ES8388)
 	{
@@ -564,7 +566,7 @@ void codecsetup_task(void* arg)
 		bool res = _acodec->init(_codecAddress);
 		_acodec->muteLeftAdcIn = &_muteLeftAdcIn;
 		_acodec->muteRightAdcIn = &_muteRightAdcIn;
-		setDebugVars(_codecAddress);
+		_outCorrectionGain = _acodec->outCorrectionGain;
 	}
 	_codecIsReady = true;
 
@@ -758,6 +760,113 @@ void runSystemMonitor(int baudRate, int updatePeriod)
 	xTaskCreatePinnedToCore(sysmon_task, "sysmon_task", 4096, &_updatePeriod, 0, NULL,0);
 }
 
+enum {scp_disabled, scp_startWaitTrigger, scp_waitTrigger, scp_probing, scp_waitdisplay};
+static int scpState = scp_disabled;
+
+static int scSampleCount;
+static int scSampleLength;
+static int scTriggerChannel;
+static float scPrevSample;
+static float scTriggerLevel;
+static bool scRisingTrigger;
+static float** scData = NULL;
+
+void scope_task(void *arg)
+{
+	scSampleCount = 0;
+	scpState = scp_startWaitTrigger;
+	while(true)
+	{
+		if(scpState==scp_waitdisplay)
+		{
+			//send the data to serial display
+			for(int j=0;j<scSampleLength;j++)
+			{
+					Serial.printf("ch-%d:%f, ch-%d:%f\n", 0,scData[0][j],1,scData[1][j]);
+			}
+			Serial.flush();
+			vTaskDelay(1);
+			scpState = scp_startWaitTrigger;
+		}	
+		vTaskDelay(100);
+	}
+	vTaskDelete(NULL);
+}
+
+void runScope(int baudRate, int sampleLength, int triggerChannel, float triggerLevel, bool risingTrigger)
+{
+	Serial.begin(baudRate);
+	scSampleLength = sampleLength;
+	scTriggerLevel = triggerLevel;
+	scRisingTrigger = risingTrigger;
+	scTriggerChannel = triggerChannel;
+	
+	scData = new float*[2];
+	for(int i=0;i<2;i++)
+		scData[i]=(float*)ps_malloc((scSampleLength +1) * sizeof(float));
+	for(int i=0;i<scSampleLength;i++)
+	{
+		scData[0][i] = 0;
+		scData[1][i] = 0;
+	}
+	xTaskCreatePinnedToCore(scope_task, "scope_task", 4096, NULL, AUDIO_PROCESS_PRIORITY-1, NULL,0);
+}
+
+void scopeProbe(float sample, int channel)
+{
+	switch(scpState)
+	{
+		case scp_probing:
+		{
+			if(scSampleCount < scSampleLength)
+			scData[channel][scSampleCount] = sample;
+			if(channel == scTriggerChannel)
+			{
+				scSampleCount++;
+				if(scSampleCount>= scSampleLength)
+				{
+					scpState = scp_waitdisplay;
+				}
+			}
+			break;
+		}
+		case scp_startWaitTrigger:
+		{
+			if(channel == scTriggerChannel)
+			{
+				scPrevSample = sample;
+				scpState = scp_waitTrigger;
+			}
+			break;
+		}
+		case scp_waitTrigger:
+		{
+			if(channel == scTriggerChannel)
+			{
+				if(scRisingTrigger)
+				{
+					if((sample > scTriggerLevel)&&(scPrevSample <= scTriggerLevel))
+					{
+						scSampleCount = 0;
+						scpState = scp_probing;
+					}
+				}
+				else 
+				{
+					if((sample < scTriggerLevel)&&(scPrevSample >= scTriggerLevel))
+					{
+						scSampleCount = 0;
+						scpState = scp_probing;
+					}
+				}
+				scPrevSample = sample;
+
+			}
+			break;
+		}
+	}
+}
+
 void enableBleTerminal(void)
 {
 	btt = new bt_terminal();
@@ -815,20 +924,54 @@ int getAudioFps()
 
 void setMicGain(int gain)
 {
+  //_codec.SetMicGain(gain);
   _acodec->setMicGain(gain);
 }
 
 int getMicGain()
 {
+  //return _codec.GetMicGain();
   return _acodec->getMicGain();
+}
+
+//set the input gain (analog gain) (0..8 for ES8388)
+void setInGain(int gain)
+{
+	_acodec->setInGain(gain);
+}
+
+//optimize the analog to digital conversion range (0..4 for ES8388-version module)
+void optimizeConversion(int range)
+{
+	_acodec->optimizeConversion(range);
+}
+
+//set microphone noise gate (0-31: -76.5dB, -75.0dB,...., -30.0dB)
+void setMicNoiseGate(int gate)
+{ 
+	_acodec->setMicNoiseGate(gate);
+}
+
+//get microphone noise gate (0-31: -76.5dB, -75.0dB,...., -30.0dB)
+int getMicNoiseGate()
+{
+	_acodec->getMicNoiseGate();
+}
+
+//get the input gain (analog gain) (0..8 for ES8388)
+int getInGain()
+{
+	return _acodec->getInGain();
 }
 
 void setOutVol(int vol)
 {
+  //_codec.SetVolSpeaker(vol);
   _acodec->setOutVol(vol);
 }
 
 int getOutVol()
 {
+  //return _codec.GetVolSpeaker();
   return _acodec->getOutVol();
 }

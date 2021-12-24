@@ -1,6 +1,6 @@
 # BLACKSTOMP
 * Description: A quick development platform for ESP32-A1S digital audio effect processor!
-* Version: 3.2
+* Version: 3.3
 
 # Features
 - Dual core 240MHz Tensilica Xtensa LX-6 (32-bit processor with floating point unit)
@@ -26,6 +26,14 @@
 - Provide implementation of multi-button mode of the control input
 
 # Change History
+* Version 3.3
+  + Added optimizeConversion(range) API for ES8388-version module to produce much less noise at default range 250mVrms/707mVpp
+  + Enabled ALC to reduce the clipping effect for limited range of ES8388 version module
+  + Enabled ALC to boost the microphoe gain with minimal compression and limiting effect
+  + Added setMicNoiseGate() API to use the noise gate feature of ES8388-version module
+  + Added setPhase method and setWaveTable method for oscillator object to accomodate non-sinusoidal waveforms
+  + Added runScope function for sending real-time waveform data to Arduino IDE's serial plotter
+  + Updated example sketches to introduce the new features
 * Version 3.2
   + Added slowSpeed property in control object to suppress the internal noise of ES8388 version in CM_POT control mode
   + Fixed some error in example scketches

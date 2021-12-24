@@ -6,7 +6,8 @@
 typedef enum
 {
 	DT_ESP32_A1S_AC101,
-	DT_ESP32_A1S_ES8388
+	DT_ESP32_A1S_ES8388,
+	DT_WROVER_WM8776
 } DEVICE_TYPE;
 
 typedef enum
@@ -27,14 +28,15 @@ class codec
 {
   protected:
 	int i2cAddress;
-	bool writeReg(uint8_t reg, uint16_t val, bool singleByteMode=false);
-	uint16_t readReg(uint8_t reg, bool singleByteMode=false);
+	virtual bool writeReg(uint8_t reg, uint16_t val){};
+	virtual uint16_t readReg(uint8_t reg){};
 	
   private:
 	int inmode;
 	
   public:
   
+    float outCorrectionGain;
 	bool* muteLeftAdcIn;
 	bool* muteRightAdcIn;
 	
@@ -47,13 +49,26 @@ class codec
 	int getInputMode(){ return inmode;};
 	
 	//get and set the output level (analog gain)
-	//vol = 0-32
+	//vol = 0-30 for ES83-version module
+	//vol = 0-31 for AC101-version module
 	virtual bool setOutVol(int vol){};
 	virtual int getOutVol(){};
+	
+	//get and set the input gain (analog)
+	virtual bool setInGain(int gain){};
+	virtual int getInGain(){};
 	
 	//get and set microphone gain (0:0dB,1-7:30dB-48dB)
 	virtual uint8_t getMicGain(){};
 	virtual bool setMicGain(uint8_t gain){};
+	
+	//get and set microphone noise gate (0-31: -76.5dB, -75.0dB,...., -30.0dB)
+	virtual int getMicNoiseGate(){};
+	virtual bool setMicNoiseGate(int gate){};
+	
+	//optimize the analog to digital conversion range
+	//range: 0, 1, 2, 3, 4 (1Vrms/2.83Vpp, 0.5Vrms/1.41Vpp, 0.25Vrms/707mVpp, 0.125Vrms/354mVpp, 0.625Vrms/177mVpp)
+	virtual void optimizeConversion(int range=2);
 	
 	//bypassed the analog input to the output, disconnect the digital i/o 
 	virtual bool analogBypass(bool bypass, BYPASS_MODE bm=BM_LR){};  
@@ -66,6 +81,8 @@ class codec
 class AC101Codec:public codec
 {
 	private:
+	bool writeReg(uint8_t reg, uint16_t val);
+	uint16_t readReg(uint8_t reg);
 	
 	bool setI2sWordSize(uint16_t size);
 	bool setI2sFormat(uint16_t format);
@@ -102,6 +119,13 @@ class AC101Codec:public codec
 	bool setOutVol(int vol);
 	int getOutVol();
 	
+	//get and set the input gain (analog)
+	bool setInGain(int gain){return false;};
+	int getInGain(){return 0;};
+	
+	//optimize analog to digital conversion range
+	void optimizeConversion(int range){};
+	
 	//get and set microphone gain (0:0dB,1-7:30dB-48dB)
 	uint8_t getMicGain();
 	bool setMicGain(uint8_t gain);
@@ -117,20 +141,31 @@ class AC101Codec:public codec
 class ES8388Codec:public codec
 {
 	private:
-	int inmode;
+	bool writeReg(uint8_t reg, uint16_t val);
+	uint16_t readReg(uint8_t reg);
 	
 	public:
 	//initialize the codec
 	bool init(int address);
 	
 	//get and set the output level (analog gain)
-	//vol = 0-31
+	//vol = 0-32
 	bool setOutVol(int vol);
 	int getOutVol();
+	
+	//get and set the input gain (analog)
+	bool setInGain(int gain);
+	int getInGain();
+	
+	//optimize analog to digital conversion range
+	void optimizeConversion(int range);
 	
 	//get and set microphone gain (0:0dB,1-7:30dB-48dB)
 	uint8_t getMicGain();
 	bool setMicGain(uint8_t gain);
+	
+	int getMicNoiseGate();
+	bool setMicNoiseGate(int gate);
 	
 	//bypassed the analog input to the output, disconnect the digital i/o 
 	bool analogBypass(bool bypass, BYPASS_MODE bm=BM_LR);  
@@ -138,6 +173,5 @@ class ES8388Codec:public codec
 	//bypassed the analog input to the output, disconnect the digital input, preserve the digital output connection
 	bool analogSoftBypass(bool bypass, BYPASS_MODE bm=BM_LR);  
 };
-
 
 #endif

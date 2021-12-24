@@ -42,8 +42,16 @@ float lookupLinear(float x, const float* table)
 oscillator::oscillator()
 {
 	phase = 0;
-  phaseincrement = 0;
+	phaseincrement = 0;
 	setFrequency(20);
+	waveTable = sin_table;
+}
+
+void oscillator::setWaveTable(const float* wtable)
+{
+	if(wtable==NULL)
+		waveTable = sin_table;
+	else waveTable = wtable;
 }
 
 void oscillator::update()
@@ -51,6 +59,11 @@ void oscillator::update()
   phase = phase + phaseincrement;
   if(phase > MAXPHASE)
     phase = phase-MAXPHASE;
+}
+
+void oscillator::setPhase(float p)
+{
+	phase = p;
 }
 
 void oscillator::setFrequency(float freq)
@@ -63,12 +76,12 @@ float oscillator::getOutput(float phaseOffset)
   float p = phase + phaseOffset;
   if(p>MAXPHASE)
     p = p - MAXPHASE;
-  return lookupLinear(p,sin_table);
+  return lookupLinear(p,waveTable);
 }
 
 float oscillator::getOutput()
 {
-  return lookupLinear(phase,sin_table);
+  return lookupLinear(phase,waveTable);
 }
 
 //######################################################################

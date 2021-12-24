@@ -193,35 +193,6 @@ static TwoWire * _codecWire = NULL;
 
 //FUNCTION
 
-/*
-//detecting the codec address of the device connected to the i2s pin
-
-int codecDetect(int sdaPin, int sclPin, int frequency)
-{
-	//delete TwoWire object if previously instantiated
-	if(_codecWire != NULL)
-		delete _codecWire;
-		
-	//create new TwoWire instance
-	_codecWire = new TwoWire(0);
-	
-	int out = -1; //will be returned when not found
-	//join the i2c bus
-	if(_codecWire->begin(sdaPin, sclPin, frequency)==0)
-		return -2; //error joining the i2c bus at the specified pin
-	for(int i=1;i<128;i++)
-	{
-		_codecWire->beginTransmission(i);
-		if(_codecWire->endTransmission()==0)
-		{
-			out = i; //found at this address
-			break;
-		}
-	}
-	return out;
-}
-*/
-
 //Initialize the I2C bus at specific pins and clock frequency
 bool codecBusInit(int sdaPin, int sclPin, int frequency)
 {
@@ -231,48 +202,31 @@ bool codecBusInit(int sdaPin, int sclPin, int frequency)
 	else return true;
 }
 
-////////////////////////////////////////////////////////////////////////
-//codec base class
-
-bool codec::writeReg(uint8_t reg, uint16_t val, bool singleByteMode)
+///////////////////////////////////////////////////////////////////////
+//AC101 codec class
+bool AC101Codec::writeReg(uint8_t reg, uint16_t val)
 {
 	if(_codecWire == NULL)
 		return false;
-		
 	_codecWire->beginTransmission(i2cAddress);
 	_codecWire->write(reg);
-	if(!singleByteMode)
-		_codecWire->write(uint8_t((val >> 8) & 0xff));
+	_codecWire->write(uint8_t((val >> 8) & 0xff));
 	_codecWire->write(uint8_t(val & 0xff));
 	return (0 == _codecWire->endTransmission(true));
 }
-uint16_t codec::readReg(uint8_t reg, bool singleByteMode)
+uint16_t AC101Codec::readReg(uint8_t reg)
 {
 	_codecWire->beginTransmission(i2cAddress);
 	_codecWire->write(reg);
 	_codecWire->endTransmission(false);
 	uint16_t val = 0u;
-	if(singleByteMode) //8-bit registers (for es8388 codec)
+	if (2 == _codecWire->requestFrom(uint16_t(i2cAddress), uint8_t(2), true))
 	{
-		if (1 == _codecWire->requestFrom(uint16_t(i2cAddress), uint8_t(1), true))
-		{
-			val = uint16_t(_codecWire->read());
-		}
-		_codecWire->endTransmission(false);
+		val = uint16_t(_codecWire->read() << 8) + uint16_t(_codecWire->read());
 	}
-	else //16-bit registers (for ac101 codec)
-	{
-		if (2 == _codecWire->requestFrom(uint16_t(i2cAddress), uint8_t(2), true))
-		{
-			val = uint16_t(_codecWire->read() << 8) + uint16_t(_codecWire->read());
-		}
-		_codecWire->endTransmission(false);
-	}
+	_codecWire->endTransmission(false);
 	return val;
-};
-
-///////////////////////////////////////////////////////////////////////
-//AC101 codec class
+}; 
 
 bool AC101Codec::setI2sClock(uint16_t bitClockDiv, uint16_t bitClockInv, uint16_t lrClockDiv, uint16_t lrClockInv)
 {
@@ -425,6 +379,7 @@ bool AC101Codec::rightLineDiff(bool select)
 
 bool AC101Codec::init(int address)
 {
+	outCorrectionGain = 1;
 	i2cAddress = address;
 	bool ok = true;
 	ok &= writeReg(CHIP_AUDIO_RS, 0x123);
@@ -608,76 +563,115 @@ bool AC101Codec::analogSoftBypass(bool bypass, BYPASS_MODE bm)
 
 ////////////////////////////////////////////////////////////////////////
 //ES8388 codec class
+bool ES8388Codec::writeReg(uint8_t reg, uint16_t val)
+{
+	if(_codecWire == NULL)
+		return false;
+	_codecWire->beginTransmission(i2cAddress);
+	_codecWire->write(reg);
+	_codecWire->write(uint8_t(val & 0xff));
+	return (0 == _codecWire->endTransmission(true));
+}
+uint16_t ES8388Codec::readReg(uint8_t reg)
+{
+	_codecWire->beginTransmission(i2cAddress);
+	_codecWire->write(reg);
+	_codecWire->endTransmission(false);
+	uint16_t val = 0u;
+	if (1 == _codecWire->requestFrom(uint16_t(i2cAddress), uint8_t(1), true))
+	{
+		val = uint16_t(_codecWire->read());
+	}
+	_codecWire->endTransmission(false);
+	return val;
+}; 
+
 bool ES8388Codec::init(int address)
 {
+	outCorrectionGain = 1.05924; //correction for -0.5 missmatch of always-on ALC gain
 	i2cAddress = address;
 	bool res = true;
 
     //INITIALIZATION (BASED ON ES8388 USER GUIDE EXAMPLE)
     //BEGIN STEP BY STEP
     // Set Chip to Slave
-	res &= writeReg(ES8388_MASTERMODE,0x00,true); 
+	res &= writeReg(ES8388_MASTERMODE,0x00); 
 	delay(10);
 	
 	//Power down DEM and STM
-	res &= writeReg(ES8388_CHIPPOWER,0xF3,true);
+	res &= writeReg(ES8388_CHIPPOWER,0xF3);
 	delay(10);
 	
 	//Set same LRCK	Set same LRCK
-	res &= writeReg(ES8388_DACCONTROL21,0x80,true);
+	res &= writeReg(ES8388_DACCONTROL21,0x80);
 	delay(10);
 	
 	//Set Chip to Play&Record Mode
-	res &= writeReg(ES8388_CONTROL1,0x05,true);
+	res &= writeReg(ES8388_CONTROL1,0x05);
 	delay(10);
 	
 	//Power Up Analog and Ibias
-	res &= writeReg(ES8388_CONTROL2,0x40,true);
+	res &= writeReg(ES8388_CONTROL2,0x40);
 	delay(10);
 	//END STEP BY STEP
 	
 	//Power up ADC / Analog Input /
 	//Micbias for Record
-	res &= writeReg(ES8388_ADCPOWER,0x00,true);
+	res &= writeReg(ES8388_ADCPOWER,0x00);
 
 	//Power up DAC and Enable LOUT/ROUT
 	//res &= writeReg(ES8388_DACPOWER, 0x3C,true); //LR 1,2 out enable
 	//res &= writeReg(ES8388_DACPOWER, 0x0C,true);  //LR 2 out enable
-	res &= writeReg(ES8388_DACPOWER, 0x30,true);  //LR 1 out enable
+	res &= writeReg(ES8388_DACPOWER, 0x30);  //LR 1 out enable
 	
 	//ADC SETUP
 	
 	//Select Analog input channel for ADC
 	if(getInputMode()==0) //LR mode
 	{
-		res &= writeReg(ES8388_ADCCONTROL2,0x50,true);// LINSEL:LINPUT2, RINSEL:RINPUT2,
-		//res &= writeReg(ES8388_ADCCONTROL2,0x00,true);// LINSEL:LINPUT1, RINSEL:RINPUT1,
-		//res &= writeReg(ES8388_ADCCONTROL2,0x10,true);// LINSEL:LINPUT1, RINSEL:RINPUT2,
-		//res &= writeReg(ES8388_ADCCONTROL2,0x40,true);// LINSEL:LINPUT2, RINSEL:RINPUT1,
-		res &= writeReg(ES8388_ADCCONTROL3,0x02,true);//DS(DIFF SELECT): LINPUT1-RINPUT1, STEREO, ASDOUT NORMAL
+		res &= writeReg(ES8388_ADCCONTROL2,0x50);// LINSEL:LINPUT2, RINSEL:RINPUT2,
+		//res &= writeReg(ES8388_ADCCONTROL2,0x00);// LINSEL:LINPUT1, RINSEL:RINPUT1,
+		//res &= writeReg(ES8388_ADCCONTROL2,0x10);// LINSEL:LINPUT1, RINSEL:RINPUT2,
+		//res &= writeReg(ES8388_ADCCONTROL2,0x40);// LINSEL:LINPUT2, RINSEL:RINPUT1,
+		res &= writeReg(ES8388_ADCCONTROL3,0x02);//DS(DIFF SELECT): LINPUT1-RINPUT1, STEREO, ASDOUT NORMAL
+		
+		//ALC SETUP
+		res &= writeReg(ES8388_ADCCONTROL10,0xC8); //1100 1000, ALC:LR, MAXGAIN:-0.5dB, MINGAIN:-12dB
+		res &= writeReg(ES8388_ADCCONTROL11,0xA0); //1010 0000, ALC Target:-1.5dB, hold time:0
+		res &= writeReg(ES8388_ADCCONTROL12,0x12); //0001 0010, limiter ramp up: 182 uS, limiter ramp down: 90.8 uS
+		res &= writeReg(ES8388_ADCCONTROL13,0x06); //0000 0110, alc mode: ALC, z.cross disable, disable z.c. timeout, ramp up: 182 uS, peak detect window: 96 samples
+		res &= writeReg(ES8388_ADCCONTROL14,0x00); //0000 0000, disable noise gate
 	}
 	else //LMIC mode
 	{
-		res &= writeReg(ES8388_ADCCONTROL2,0x74,true);// LINSEL:LINPUT2, RINSEL: LR-DIFF, 
+		res &= writeReg(ES8388_ADCCONTROL2,0x74);// LINSEL:LINPUT2, RINSEL: LR-DIFF, 
 													//DSSEL:USE ONE DS(DSL), DSR: LINPUT2-RINPUT2
-		res &= writeReg(ES8388_ADCCONTROL3,0x02,true);//DSL: LINPUT1-RINPUT1, STEREO, ASDOUT NORMAL
+		res &= writeReg(ES8388_ADCCONTROL3,0x02);//DSL: LINPUT1-RINPUT1, STEREO, ASDOUT NORMAL
+		
+		//ALC SETUP
+		res &= writeReg(ES8388_ADCCONTROL10,0x58); //0101 1000, ALC:R, MAXGAIN:11.5dB, MINGAIN:-12dB
+		res &= writeReg(ES8388_ADCCONTROL11,0xA0); //1010 0000, ALC Target:-1.5dB, hold time:0
+		res &= writeReg(ES8388_ADCCONTROL12,0x12); //0001 0010, limiter ramp up: 182 uS, limiter ramp down: 90.8 uS
+		res &= writeReg(ES8388_ADCCONTROL13,0x06); //0000 0110, alc mode: ALC, z.cross disable, disable z.c. timeout, ramp up: 182 uS, peak detect window: 96 samples
+		res &= writeReg(ES8388_ADCCONTROL14,0x01); // Reg 0x16 = 0x01(noise gate = -76.5dB, NGG = 0x00(PGA gain held constant))
+	
 	}
 	
 	//Select Analog Input PGA Gain for ADC
-	res &= writeReg(ES8388_ADCCONTROL1,0x00,true); //(0dB for both left and right PGA)
+	res &= writeReg(ES8388_ADCCONTROL1,0x00); //(0dB for both left and right PGA)
 	
 	//Set SFI for ADC
-	//res &= writeReg(ES8388_ADCCONTROL4,0x00,true); // (I2S – 24Bit)
-	res &= writeReg(ES8388_ADCCONTROL4,0x20,true); // (I2S – 24Bit, LR INVERTED)
+	//res &= writeReg(ES8388_ADCCONTROL4,0x00); // (I2S – 24Bit)
+	res &= writeReg(ES8388_ADCCONTROL4,0x20); // (I2S – 24Bit, LR INVERTED)
 	
 	//Select MCLK / LRCK ratio for ADC
-	//res &= writeReg(ES8388_ADCCONTROL5,0x02,true);// (256, single speed)
-	//res &= writeReg(ES8388_ADCCONTROL5,0x03,true);// (384, single speed)
-	res &= writeReg(ES8388_ADCCONTROL5,0x23,true);// (384, double speed)
+	//res &= writeReg(ES8388_ADCCONTROL5,0x02);// (256, single speed)
+	//res &= writeReg(ES8388_ADCCONTROL5,0x03);// (384, single speed)
+	res &= writeReg(ES8388_ADCCONTROL5,0x23);// (384, double speed)
 	
 	//Set ADC Digital Volume
-	res &= writeReg(ES8388_ADCCONTROL8,0x00,true);// (0dB)
-	res &= writeReg(ES8388_ADCCONTROL9,0x00,true);//(0dB)
+	res &= writeReg(ES8388_ADCCONTROL8,0x00);// (0dB)
+	res &= writeReg(ES8388_ADCCONTROL9,0x00);//(0dB)
   
     //DAC SETUP
     
@@ -686,35 +680,37 @@ bool ES8388Codec::init(int address)
 	//{}
 
 	//Set SFI for DAC
-	//res &= writeReg(ES8388_DACCONTROL1,0x00,true);// (I2S – 24Bit)
-	res &= writeReg(ES8388_DACCONTROL1,0x40,true);// (I2S – 24Bit, LR INVERTED)
+	//res &= writeReg(ES8388_DACCONTROL1,0x00);// (I2S – 24Bit)
+	res &= writeReg(ES8388_DACCONTROL1,0x40);// (I2S – 24Bit, LR INVERTED)
 	
 	//Select MCLK / LRCK ratio for	DAC
-	//res &= writeReg(ES8388_DACCONTROL2,0x02,true);// (256 single speed)
-	//res &= writeReg(ES8388_DACCONTROL2,0x03,true);// (384, single speed)
-	res &= writeReg(ES8388_DACCONTROL2,0x23,true);// (384, double speed)
+	//res &= writeReg(ES8388_DACCONTROL2,0x02);// (256 single speed)
+	//res &= writeReg(ES8388_DACCONTROL2,0x03);// (384, single speed)
+	res &= writeReg(ES8388_DACCONTROL2,0x23);// (384, double speed)
 	
 	//Set DAC Digital Volume
-	res &= writeReg(ES8388_DACCONTROL4,0x00,true);// (0dB)
-	res &= writeReg(ES8388_DACCONTROL5,0x00,true);// (0dB)
+	res &= writeReg(ES8388_DACCONTROL4,0x00);// (0dB)
+	res &= writeReg(ES8388_DACCONTROL5,0x00);// (0dB)
 	
 	//Enable 44.1kHz Deemphasis on single speed, enable click free on power up n down
-	//res &= writeReg(ES8388_DACCONTROL6,0x88,true);// (0dB)
+	//res &= writeReg(ES8388_DACCONTROL6,0x88);// (0dB)
 	
 	//Setup Mixer, Please refer to Mixer description
-	res &= writeReg(ES8388_DACCONTROL16,0x1B,true); //left in select for out mix: L-ADC-IN, Right in select for outmix: R-ADC-IN
-	res &= writeReg(ES8388_DACCONTROL17,0x90,true); //left mixer input from left dac only, gain = 0dB
-	res &= writeReg(ES8388_DACCONTROL20,0x90,true); //right mixer input from right dac only, gain = 0dB
+	res &= writeReg(ES8388_DACCONTROL16,0x1B); //left in select for out mix: L-ADC-IN, Right in select for outmix: R-ADC-IN
+	res &= writeReg(ES8388_DACCONTROL17,0x90); //left mixer input from left dac only, gain = 0dB
+	res &= writeReg(ES8388_DACCONTROL20,0x90); //right mixer input from right dac only, gain = 0dB
 	
 	//Set LOUT/ROUT Volume
-	res &= writeReg(ES8388_DACCONTROL24,0x1E,true);// L1 (0dB)
-	res &= writeReg(ES8388_DACCONTROL25,0x1E,true);// R1 (0dB)
-	res &= writeReg(ES8388_DACCONTROL26,0x1E,true);// L2 (0dB)
-	res &= writeReg(ES8388_DACCONTROL27,0x1E,true);// R2 (0dB)
+	res &= writeReg(ES8388_DACCONTROL24,0x1E);// L1 (0dB)
+	res &= writeReg(ES8388_DACCONTROL25,0x1E);// R1 (0dB)
+	res &= writeReg(ES8388_DACCONTROL26,0x1E);// L2 (0dB)
+	res &= writeReg(ES8388_DACCONTROL27,0x1E);// R2 (0dB)
+	
+	//optimize A/D conversion for 1/4 Vrms range
+	optimizeConversion(2);
 	
 	//Power up DEM and STM
-	res &= writeReg(ES8388_CHIPPOWER,0x00,true);
-	
+	res &= writeReg(ES8388_CHIPPOWER,0x00);
 	return res;
 }
 	
@@ -722,25 +718,60 @@ bool ES8388Codec::init(int address)
 //vol = 0-31
 bool ES8388Codec::setOutVol(int vol)
 {
-	if(vol>32) vol = 32;
+	if(vol>30) vol = 30;
 	bool res = true;
-	res &= writeReg(ES8388_DACCONTROL24, vol, true); //LOUT1VOL
-    res &= writeReg(ES8388_DACCONTROL25, vol, true); //ROUT1VOL
-    //res &= writeReg(ES8388_DACCONTROL26, vol, true); //LOUT2VOL
-    //res &= writeReg(ES8388_DACCONTROL27, vol, true); //ROUT2VOL
+	res &= writeReg(ES8388_DACCONTROL24, vol); //LOUT1VOL
+    res &= writeReg(ES8388_DACCONTROL25, vol); //ROUT1VOL
+    //res &= writeReg(ES8388_DACCONTROL26, vol); //LOUT2VOL
+    //res &= writeReg(ES8388_DACCONTROL27, vol); //ROUT2VOL
 	return res;
 }
 
 int ES8388Codec::getOutVol()
 {
-	return readReg(ES8388_DACCONTROL24, true);
+	return readReg(ES8388_DACCONTROL24);
+}
+
+bool ES8388Codec::setInGain(int gain)
+{
+	if(gain > 8) gain = 8;
+	uint8_t temp = readReg(ES8388_ADCCONTROL1);
+		
+	if(getInputMode()==0) //input mode = IM_LR
+	{
+		temp = gain << 4;
+		temp = temp | gain;
+	}
+	else //input mode = IM_LMIC
+	{
+		temp = 0x0F & temp;
+		temp = temp | (gain << 4);
+	}
+	return writeReg(ES8388_ADCCONTROL1,temp);
+}
+
+int ES8388Codec::getInGain()
+{
+	uint8_t temp = readReg(ES8388_ADCCONTROL1);
+	temp = (temp & 0xF0) >> 4;
+	return temp;
+}
+
+void ES8388Codec::optimizeConversion(int range)
+{
+	int ingain[]={0, 2, 4, 6, 8}; //0db, 6dB, 12dB, 18dB, 24dB
+	int outvol[]= {30, 26, 22, 18, 14}; //0db, -6dB, -12dB, -18dB, -24dB
+	if(range<0) range = 0;
+	if(range>4) range = 4;
+	setOutVol(outvol[range]);
+	setInGain(ingain[range]);
 }
 	
 //get and set microphone gain (0:0dB,1-7:30dB-48dB)
 uint8_t ES8388Codec::getMicGain()
 {
 	if(getInputMode()==1) //input mode = LMIC
-		return (0x0F & readReg(ES8388_ADCCONTROL1, true));
+		return (0x0F & readReg(ES8388_ADCCONTROL1));
 	else return 0;
 }
 
@@ -749,13 +780,43 @@ bool ES8388Codec::setMicGain(uint8_t gain)
 	if(getInputMode()==1) //input mode = LMIC
 	{
 		if(gain > 8) gain = 8;
-		uint8_t temp = readReg(ES8388_ADCCONTROL1, true);
+		uint8_t temp = readReg(ES8388_ADCCONTROL1);
 		temp = temp & 0xF0;
 		temp = temp | gain;
-		return writeReg(ES8388_ADCCONTROL1,temp,true); 
+		return writeReg(ES8388_ADCCONTROL1,temp); 
 	}
 	else return false;
 }
+
+int ES8388Codec::getMicNoiseGate()
+{
+	if(getInputMode()==1)
+	{
+		uint8_t temp = readReg(ES8388_ADCCONTROL14);
+		temp = temp >> 3;
+		return (int) temp;
+	}
+	else return 0;
+}
+
+bool ES8388Codec::setMicNoiseGate(int gate)
+{
+	if(getInputMode()==1) //input mode = IM_LMIC
+	{
+		if(gate > 32) gate = 32;
+		if(gate>0)
+		{
+			uint8_t temp = ((gate-1) << 3) | 1;
+			return writeReg(ES8388_ADCCONTROL14,temp); 
+		}
+		else //turn off the noise gate at gate = 0
+		{
+			return writeReg(ES8388_ADCCONTROL14,0); 
+		}
+	}
+	else return false;
+}
+
 //bypassed the analog input to the output, disconnect the digital i/o 
 bool ES8388Codec::analogBypass(bool bypass, BYPASS_MODE bm)
 {
@@ -768,9 +829,9 @@ bool ES8388Codec::analogBypass(bool bypass, BYPASS_MODE bm)
 			*muteRightAdcIn= true;
 		
 		if((bm==BM_LR)||(bm==BM_L))
-			res &= writeReg(ES8388_DACCONTROL17,0x50,true); //disable ldac, enable lin, gain = 0dB
+			res &= writeReg(ES8388_DACCONTROL17,0x50); //disable ldac, enable lin, gain = 0dB
 		if((bm==BM_LR)||(bm==BM_R))
-			res &= writeReg(ES8388_DACCONTROL20,0x50,true); //disable rdac, enable rin, gain = 0dB
+			res &= writeReg(ES8388_DACCONTROL20,0x50); //disable rdac, enable rin, gain = 0dB
 	}
 	else
 	{
@@ -780,11 +841,11 @@ bool ES8388Codec::analogBypass(bool bypass, BYPASS_MODE bm)
 			*muteRightAdcIn= false;
 		
 		if((bm==BM_LR)||(bm==BM_L))
-			res &= writeReg(ES8388_DACCONTROL17,0x90,true); //enable ldac,disable lin, gain = 0dB
+			res &= writeReg(ES8388_DACCONTROL17,0x90); //enable ldac,disable lin, gain = 0dB
 		if((bm==BM_LR)||(bm==BM_R))
-			res &= writeReg(ES8388_DACCONTROL20,0x90,true); //enable rdac,disable rin, gain = 0dB
+			res &= writeReg(ES8388_DACCONTROL20,0x90); //enable rdac,disable rin, gain = 0dB
 	}	
-	return true;
+	return res;
 }
 
 //bypassed the analog input to the output, disconnect the digital input, preserve the digital output connection
@@ -799,9 +860,9 @@ bool ES8388Codec::analogSoftBypass(bool bypass, BYPASS_MODE bm)
 			*muteRightAdcIn= true;
 		
 		if((bm==BM_LR)||(bm==BM_L))
-			res &= writeReg(ES8388_DACCONTROL17,0xD0,true); //enable ldac, enable lin, gain = 0dB
+			res &= writeReg(ES8388_DACCONTROL17,0xD0); //enable ldac, enable lin, gain = 0dB
 		if((bm==BM_LR)||(bm==BM_R))
-			res &= writeReg(ES8388_DACCONTROL20,0xD0,true); //enable rdac, enable rin, gain = 0dB
+			res &= writeReg(ES8388_DACCONTROL20,0xD0); //enable rdac, enable rin, gain = 0dB
 	}
 	else
 	{
@@ -811,11 +872,10 @@ bool ES8388Codec::analogSoftBypass(bool bypass, BYPASS_MODE bm)
 			*muteRightAdcIn= false;
 		
 		if((bm==BM_LR)||(bm==BM_L))
-			res &= writeReg(ES8388_DACCONTROL17,0x90,true); //enable ldac,disable lin, gain = 0dB
+			res &= writeReg(ES8388_DACCONTROL17,0x90); //enable ldac,disable lin, gain = 0dB
 		if((bm==BM_LR)||(bm==BM_R))
-			res &= writeReg(ES8388_DACCONTROL20,0x90,true); //enable rdac,disable rin, gain = 0dB
+			res &= writeReg(ES8388_DACCONTROL20,0x90); //enable rdac,disable rin, gain = 0dB
 	}
-	return true;
+	return res;
 }
-
 

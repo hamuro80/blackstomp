@@ -50,16 +50,41 @@ void setDeviceType(DEVICE_TYPE dt);
 void enableBleTerminal(void);
 
 //set the output level (analog gain)
-void setOutVol(int vol); //vol = 0-32
+//vol = 0-30 for ES83-version module
+//vol = 0-31 for AC101-version module
+void setOutVol(int vol); 
 
 //get the output level (analog gain)
-int  getOutVol(); //return 0-32
+int  getOutVol(); 
 
-//set microphone gain (0:0dB,1-7:30dB-48dB)
+//set the input gain (analog gain) 
+//currently only implemented for ES8388-version module 
+//gain: 0..8 for (0,3,6,9,12,15,18,21,24)dB
+void setInGain(int gain);
+
+//get the input gain (analog gain) 
+//currently only implemented for ES8388-version module 
+//gain: 0..8 for (0,3,6,9,12,15,18,21,24)dB
+int getInGain();
+
+//optimize the analog to digital conversion range
+//currently only implemented for ES8388-version module 
+//range: 0, 1, 2, 3, 4, default: 2 (0.25Vrms/707mVpp)
+//(1Vrms/2.83Vpp, 0.5Vrms/1.41Vpp, 0.25Vrms/707mVpp, 0.125Vrms/354mVpp, 0.0625Vrms/177mVpp)
+void optimizeConversion(int range=2);
+
+//set microphone gain 
+//0-7 (0:0dB,1-7:30dB-48dB) for AC101-version module
+//0-8 (12,15,18,21,24,27,30,33,36)dB for ES8388-version module 
+//(ES8388 mic gain is formulated from PGA gain + ALC gain + Software Correction)
 void setMicGain(int gain);
-
-//get microphone gain (0:0dB,1-7:30dB-48dB)
 int getMicGain(); 
+
+//mic's noise gate 
+//gate: 0-32 (n.g.off, -76.5dB, -75.0dB,...., -30.0dB for ES8388-version module)
+//currently only implemented for ES8388-version module 
+void setMicNoiseGate(int gate);
+int getMicNoiseGate();
 
 //bypassed the analog input to the output, disconnect the digital i/o 
 bool analogBypass(bool bypass, BYPASS_MODE bm=BM_LR);  
@@ -79,9 +104,19 @@ float getCpuUsage();
 //audio frames per second
 int getAudioFps();     
 
-//run system monitor on serial port, can be called on arduino setup
+//run system monitor on serial port, should be called on arduino setup when needed
+//don't call this function when runScope function has been called
 //don't call this function when MIDI is implemented
-void runSystemMonitor(int baudRate, int updatePeriod);
+void runSystemMonitor(int baudRate=115200, int updatePeriod=1500);
+
+//run 2-channel simple scope, should be called on arduino setup when needed
+//don't call this function when runSystemMonitor function has been called
+//don't call this function when MIDI is implemented
+void runScope(int baudRate=1000000, int sampleLength=441, int triggerChannel=0, float triggerLevel=0, bool risingTrigger=true);
+
+//probe a signal to be displayed on Arduino IDE's serial plotter
+//channel: 0-1
+void scopeProbe(float sample, int channel);
 
 //set debug string (to be shown in the system monitor when it runs)
 void setDebugStr(const char* str);
