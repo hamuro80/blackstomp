@@ -33,7 +33,6 @@
   + Added setMicNoiseGate() API to use the noise gate feature of ES8388-version module
   + Added setPhase method and setWaveTable method for oscillator object to accomodate non-sinusoidal waveforms
   + Added runScope function for sending real-time waveform data to Arduino IDE's serial plotter
-  + Updated example sketches to introduce the new features
 * Version 3.2
   + Added slowSpeed property in control object to suppress the internal noise of ES8388 version in CM_POT control mode
   + Fixed some error in example scketches

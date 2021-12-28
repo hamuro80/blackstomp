@@ -473,6 +473,7 @@ uint8_t AC101Codec::getMicGain()
 
 bool AC101Codec::setMicGain(uint8_t gain)
 {
+	if(gain > 7) gain = 7;
 	uint16_t val = readReg(ADC_SRCBST_CTRL);
 	val &=  ~(7 << 12);
 	val |= gain << 12;
