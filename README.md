@@ -1,6 +1,6 @@
 # BLACKSTOMP
 * Description: A quick development platform for ESP32-A1S digital audio effect processor!
-* Version: 3.3
+* Version: 3.4
 
 # Features
 - Dual core 240MHz Tensilica Xtensa LX-6 (32-bit processor with floating point unit)
@@ -26,6 +26,12 @@
 - Provide implementation of multi-button mode of the control input
 
 # Change History
+* Version 3.4
+  + Added tap multiplier control and re-arrange the previous controls in taptempodelay scketch
+  + Added noise gate control in micmixer sketch example
+  + Added conversion optimization control in gaindoubler sketch example
+  + Fixed optimizeConversion function to be callable inside setup
+  + Added commented (inactive) optimizeConversion() code inside setup() section of all example sketches
 * Version 3.3
   + Added optimizeConversion(range) API for ES8388-version module to produce much less noise at default range 250mVrms/707mVpp
   + Enabled ALC to reduce the clipping effect for limited range of ES8388 version module

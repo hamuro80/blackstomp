@@ -22,6 +22,10 @@ void gainDoubler::init()
   //setDeviceType(DT_ESP32_A1S_AC101);
   setDeviceType(DT_ESP32_A1S_ES8388);
   
+  //default optimization for ES8388-version module  is 1/4 Vrms range
+  //to optimize for the 1 Vrms range (more noisy), uncomment the following line:
+  //optimizeConversion(0);
+  
   //define your effect name
   name = "GAIN DOUBLER";
  
@@ -53,6 +57,11 @@ void gainDoubler::init()
   control[1].name = "Range";
   control[1].mode = CM_SELECTOR;
   control[1].levelCount = 3;
+
+  //add range conversion control
+  control[2].name = "Conversion Optimizer";
+  control[2].mode = CM_SELECTOR;
+  control[2].levelCount = 5;
 
   gain = 1;
   gainRange = 1;
@@ -112,6 +121,11 @@ void gainDoubler::onControlChange(int controlIndex)
       else gainRange = 2;
       break;
     }
+    case 2:
+    {
+      optimizeConversion(control[2].value);
+      break;
+    }
   }
 }
 
@@ -140,6 +154,7 @@ void setup()
 
 //Arduino core loop
 //let the main loop empty to dedicate the core 1 for the main audio task
-void loop() {
+void loop() 
+{
 
 }

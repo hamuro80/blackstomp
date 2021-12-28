@@ -48,6 +48,10 @@ void blePedal::init()
   //setDeviceType(DT_ESP32_A1S_AC101);
   setDeviceType(DT_ESP32_A1S_ES8388);
   
+  //default optimization for ES8388-version module  is 1/4 Vrms range
+  //to optimize for the 1 Vrms range (more noisy), uncomment the following line:
+  //optimizeConversion(0);
+  
   //define your effect name
   name = "BLE PEDAL";
 

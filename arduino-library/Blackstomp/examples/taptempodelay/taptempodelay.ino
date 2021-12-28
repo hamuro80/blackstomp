@@ -41,6 +41,7 @@ class taptempoDelay:public effectModule
   float dryGain;
   float wetGain;
   float feedbackGain;
+  float tempoDiv;
   
   public:
   void init();
@@ -57,38 +58,47 @@ void taptempoDelay::init()
   //setDeviceType(DT_ESP32_A1S_AC101);
   setDeviceType(DT_ESP32_A1S_ES8388);
   
+  //default optimization for ES8388-version module  is 1/4 Vrms range
+  //to optimize for the 1 Vrms range (more noisy), uncomment the following line:
+  //optimizeConversion(0);
+  
   name = "TAP-TEMPO DELAY";
   inputMode = IM_LR;
 
-  control[0].name = "Time";
+  control[0].name = "Dry-Wet Balance";
   control[0].mode = CM_POT;
-  //control[0].levelCount = 200;  //0 = 10 ms, 199 = 2000 ms
-  control[0].levelCount = 100;  //0 = 10 ms, 99 = 1000 ms
-  control[0].value = 49; //500 ms
+  control[0].levelCount = 128;
+  control[0].value = 64;
   control[0].slowSpeed = true;
 
-  control[2].name = "Repeat";  //feedback gain
+  control[1].name = "Repeat";  //feedback gain
+  control[1].mode = CM_POT;
+  control[1].levelCount = 128; 
+  control[1].value = 64;
+  control[1].slowSpeed = true;
+
+  control[2].name = "Time";
   control[2].mode = CM_POT;
-  control[2].levelCount = 128; 
-  control[2].value = 64;
-  control[0].slowSpeed = true;
+  //control[2].levelCount = 200;  //0 = 10 ms, 199 = 2000 ms
+  control[2].levelCount = 100;  //0 = 10 ms, 99 = 1000 ms
+  control[2].value = 49; //500 ms
+  control[2].slowSpeed = true;
   
   //set up the controls
-  control[3].name = "Input Mode";  //0:MONO, 1:STEREO
+  control[3].name = "Output Mode";  //0:MONO, 1:STEREO
   control[3].mode = CM_SELECTOR;
   control[3].levelCount = 2; 
-  control[3].value = 0;
+  control[3].value = 1;
+  
+  control[4].name = "Input Mode";  //0:MONO, 1:STEREO
+  control[4].mode = CM_SELECTOR;
+  control[4].levelCount = 2; 
+  control[4].value = 0;
 
-  control[4].name = "Dry-Wet Balance";
-  control[4].mode = CM_POT;
-  control[4].levelCount = 128;
-  control[4].value = 64;
-  control[0].slowSpeed = true;
-
-  control[5].name = "Output Mode";  //0:MONO, 1:STEREO
+  control[5].name = "Tap Multiply"; //0:1x, 1:2x, 2:3x
   control[5].mode = CM_SELECTOR;
-  control[5].levelCount = 2; 
-  control[5].value = 1;
+  control[5].levelCount = 3;
+  control[5].value = 0;
 
   //setup the buttons
   encoderMode = EM_BUTTONS;
@@ -123,6 +133,7 @@ void taptempoDelay::init()
   feedbackGain = 0.5;
   dryGain = 1;
   wetGain = 1;
+  tempoDiv = 1;
 } 
 
 ////////////////////////////////////////////////////////////////////////
@@ -137,25 +148,33 @@ void taptempoDelay::onControlChange(int controlIndex)
 {
   switch(controlIndex)
   {
-    case 0: //time
+    case 0: //dry wet balance
     {
-      int dt = (control[0].value +1)*10;
+      dryGain =  2*(127.0-(float)control[0].value)/127;
+      if(dryGain>1) dryGain=1;
+      wetGain = 2*(float)control[0].value/127;
+      if(wetGain>1) wetGain=1;
+      break;
+    }
+    case 1: //repeat
+    {
+      feedbackGain = (float)control[1].value /127.0;
+      break;
+    }
+    case 2: //time
+    {
+      int dt = (control[2].value +1)*10;
       setTime(dt); 
       auxLed->blinkUpdate(10,dt-10,1,0,0);
       break;
     }
-    case 2: //repeat
+    case 5: //tap multiply
     {
-      feedbackGain = (float)control[2].value /127.0;
-      break;
-    }
-    case 4: //dry-wet balance
-    {
-      dryGain =  2*(127.0-(float)control[4].value)/127;
-      if(dryGain>1) dryGain=1;
-      wetGain = 2*(float)control[4].value/127;
-      if(wetGain>1) wetGain=1;
-      break;
+      if(control[5].value == 0)
+        tempoDiv = 1;
+      else if(control[5].value == 1)
+        tempoDiv = 2;
+      else tempoDiv = 3;
     }
   }
 }
@@ -180,8 +199,10 @@ void taptempoDelay::onButtonChange(int buttonIndex)
     }
     case 1: //aux button (tap tempo)
     {
-      setTime(button[1].value);
-      auxLed->blink(10,button[1].value-10,1,0,0);
+      int t = round((float)button[1].value/tempoDiv);
+      if(t<10) t=10;
+      setTime(t);
+      auxLed->blink(10,t-10,1,0,0);
       break;
     }
    }
@@ -230,12 +251,12 @@ void taptempoDelay::process(float* inLeft, float* inRight, float* outLeft, float
     float outL;
     float outR;
 
-    if(control[3].value==0) //mono input
+    if(control[4].value==0) //mono input
     {
       inRight[i] = inLeft[i];
     }
 
-    if(control[5].value==1) //stereo output
+    if(control[3].value==1) //stereo output
     {
       outL = dryGain * inLeft[i] + wetGain * delayBufferL[readIndex];
       outR = dryGain * inRight[i] + wetGain * delayBufferR[readIndex];
@@ -248,7 +269,7 @@ void taptempoDelay::process(float* inLeft, float* inRight, float* outLeft, float
     }
 
     delayBufferL[writeIndex] = feedbackGain * delayBufferR[readIndex] + inLeft[i];;
-    if(control[3].value==0 && control[5].value==1)  //if mono input and stereo output
+    if(control[4].value==0 && control[3].value==1)  //if mono input and stereo output
       delayBufferR[writeIndex] = feedbackGain * delayBufferL[readIndex];
     else 
       //stereo input or mono output
@@ -263,12 +284,14 @@ void taptempoDelay::process(float* inLeft, float* inRight, float* outLeft, float
 taptempoDelay  myPedal;
 
 //setup the effect modules by calling blackstompSetup() inside arduino core's setup()
-void setup() {
+void setup() 
+{
   //setting up the effect module
   blackstompSetup(&myPedal);
 }
 
 //let the main loop empty to dedicate the core 1 for the main audio task
-void loop() {
+void loop() 
+{
 
 }

@@ -46,6 +46,10 @@ void micMixer::init()
   //setDeviceType(DT_ESP32_A1S_AC101);
   setDeviceType(DT_ESP32_A1S_ES8388);
   
+  //default optimization for ES8388-version module  is 1/4 Vrms range
+  //to optimize for the 1 Vrms range (more noisy), uncomment the following line:
+  //optimizeConversion(0);
+  
   name = "MIC MIXER";
   inputMode = IM_LMIC;
 
@@ -53,6 +57,11 @@ void micMixer::init()
   control[0].mode = CM_POT;
   control[0].levelCount = 8;  //0-7: 0dB, 30dB, 33dB, 36dB, 39dB, 42dB, 45dB, 48dB
   control[0].value = 0;
+
+  control[1].name = "Noise Gate";
+  control[1].mode = CM_POT;
+  control[1].levelCount = 33;  //0-32
+  control[1].value = 0;
 
   control[2].name = "Mic Level"; 
   control[2].mode = CM_POT;
@@ -84,9 +93,14 @@ void micMixer::onControlChange(int controlIndex)
       setMicGain(control[0].value);
       break;
     }
+    case 1: //noise gate
+    {
+      setMicNoiseGate(control[1].value);
+      break;
+    }
     case 2: //mic level
     {
-      micLevel = (float)control[2].value/127.0;
+      micLevel = 4*(float)control[2].value/127.0;
       break;
     }
   }
@@ -133,12 +147,14 @@ void micMixer::process(float* inLeft, float* inRight, float* outLeft, float* out
 micMixer  myPedal;
 
 //setup the effect modules by calling blackstompSetup() inside arduino core's setup()
-void setup() {;
+void setup() 
+{;
   //SETTING UP THE EFFECT MODULE
   blackstompSetup(&myPedal);
 }
 
 //let the main loop empty to dedicate the core 1 for the main audio task
-void loop() {
+void loop() 
+{
  
 }

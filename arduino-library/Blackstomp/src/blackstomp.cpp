@@ -119,6 +119,8 @@ static bool _muteRightAdcIn = false;
 static effectModule* _module = NULL;
 bool _codecIsReady = false;
 static float _outCorrectionGain = 1;
+static int _optimizedRange = 2;
+
 
 //controlInterface pointer
 static controlInterface _control;
@@ -569,6 +571,7 @@ void codecsetup_task(void* arg)
 		_outCorrectionGain = _acodec->outCorrectionGain;
 	}
 	_codecIsReady = true;
+	optimizeConversion(_optimizedRange);
 
 	vTaskDelete(NULL);
 }
@@ -943,7 +946,9 @@ void setInGain(int gain)
 //optimize the analog to digital conversion range (0..4 for ES8388-version module)
 void optimizeConversion(int range)
 {
-	_acodec->optimizeConversion(range);
+	if(_codecIsReady)
+		_acodec->optimizeConversion(range);
+	else _optimizedRange = range;
 }
 
 //set microphone noise gate (0-31: -76.5dB, -75.0dB,...., -30.0dB)
