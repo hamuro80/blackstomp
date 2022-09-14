@@ -103,8 +103,11 @@
 
 //dma buffer length 32 bytes (8 samples: 4L+4R)
 #define DMABUFFERLENGTH 32
+
 //dma buffer count 20 (640 Bytes: 160 samples: 80L+80R) 
-#define DMABUFFERCOUNT  20
+//#define DMABUFFERCOUNT  20
+//dma buffer count 2 (for 2 ms measured latency)
+#define DMABUFFERCOUNT  2
 
 //codec instance
 //static AC101 _codec;

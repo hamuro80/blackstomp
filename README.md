@@ -1,6 +1,6 @@
 # BLACKSTOMP
 * Description: A quick development platform for ESP32-A1S digital audio effect processor!
-* Version: 3.4
+* Version: 3.5
 
 # Features
 - Dual core 240MHz Tensilica Xtensa LX-6 (32-bit processor with floating point unit)
@@ -26,6 +26,9 @@
 - Provide implementation of multi-button mode of the control input
 
 # Change History
+* Version 3.5
+  + Changed buffer count from 20 to 2 for 2 ms measure latency
+  + Added BGPM-2 schematic and PCB gerber file
 * Version 3.4
   + Added tap multiplier control and re-arrange the previous controls in taptempodelay scketch
   + Added noise gate control in micmixer sketch example
