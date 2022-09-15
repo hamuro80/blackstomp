@@ -27,7 +27,7 @@
 
 # Change History
 * Version 3.5
-  + Changed buffer count from 20 to 2 for 2 ms measure latency
+  + Changed buffer count from 20 to 2 for 2 ms measured latency
   + Added BGPM-2 schematic and PCB gerber file
 * Version 3.4
   + Added tap multiplier control and re-arrange the previous controls in taptempodelay scketch
