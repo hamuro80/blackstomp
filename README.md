@@ -1,6 +1,6 @@
 # BLACKSTOMP
 * Description: A quick development platform for ESP32-A1S digital audio effect processor!
-* Version: 3.5
+* Version: 3.6
 
 # Features
 - Dual core 240MHz Tensilica Xtensa LX-6 (32-bit processor with floating point unit)
@@ -20,12 +20,16 @@
 - MIDI Pedal
 - Mic Mixer
 - Gain Doubler
+- Distortion
  
 # TODO List
 - Provide BLE terminal client app and implement debug monitoring API via BLE, so the Serial port can be dedicated for MIDI
 - Provide implementation of multi-button mode of the control input
 
 # Change History
+* Version 3.6
+  + Added waveshaper, rchipass, rclopass, simpletone, and noisegate objects in the library (bsdsp.h, bsdsp.cpp)
+  + Added distortion.ino in the example (stacked distortion with tone control and noise gate)
 * Version 3.5
   + Changed buffer count from 20 to 2 for 2 ms measured latency
   + Added BGPM-2 schematic and PCB gerber file
