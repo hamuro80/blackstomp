@@ -46,6 +46,7 @@ class biquadFilter
     int stages;
     biquadState* states;
   public:
+  float process(float in);
   void process(const float* in, float* out, int sampleCount);
   void setCoef(const float* coef);  //coef[] = {coef stage0, coeff stage1,..} = {b0,b1,b2,a1,a2,b0,b1,b2,a1,a2,..}
   void reset();
@@ -90,6 +91,73 @@ class oscillator
   //phase offset = 0 .. 255.0
 	float getOutput(float phaseOffset);
 	float getOutput();
+};
+
+class waveshaper
+{
+	public:
+		//constructor
+		waveshaper();
+		float transferFunctionTable[256];
+		//block processing mode
+		void process(float* in, float* out, int sampleCount);
+		//sample processing mode
+		float process(float in);
+};
+
+class rchipass
+{
+	private:
+		float vc;	//capacitor voltage
+		float tc;	//time constant
+	public:
+	rchipass();
+	void setCutOff(float val);
+	void setTimeConstant(float val);
+	float process(float in);
+	void process(float* in, float* out, int sampleCount);
+};
+
+class rclopass
+{
+	private:
+		float vc;	//capacitor voltage
+		float tc;	//time constant
+	public:
+	rclopass();
+	void setCutOff(float val);
+	void setTimeConstant(float val);
+	float process(float in);
+	void process(float* in, float* out, int sampleCount);
+};
+
+class simpletone
+{
+	private:
+	float tone;
+	
+	public:
+	simpletone();
+	rclopass loPass;
+	rchipass hiPass;
+	float process(float in);
+	void process(float* in, float* out, int sampleCount);
+	void setTone(float val);	//0.0-1.0
+};
+
+class noisegate
+{
+	private:
+	biquadFilter* lpf;
+	float upperTh;
+	float lowerTh;
+	
+	public:
+	noisegate();
+	float process(float in);
+	void process(float* in, float* out, int sampleCount);
+	void setThreshold(float val);
+	float envelope;
 };
 
 #endif

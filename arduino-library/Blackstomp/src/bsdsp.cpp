@@ -137,6 +137,19 @@ void biquadFilter::process(const float* in, float* out, int sampleCount)
   }
 }
 
+float biquadFilter::process(float in)
+{
+	float input = in;
+    for(int s=0; s<stages; s++) 
+    {
+      float temp = input + states[s].coef[3] * states[s].w[0] + states[s].coef[4]*states[s].w[1];
+      input = temp * states[s].coef[0] + states[s].coef[1] * states[s].w[0] + states[s].coef[2]*states[s].w[1];
+      states[s].w[1]=states[s].w[0];
+      states[s].w[0]=temp;
+    }
+    return input;
+}
+
 //######################################################################
 // FRACTIONAL DELAY
 fractionalDelay::fractionalDelay()
@@ -194,4 +207,187 @@ float fractionalDelay::read(float delayInMs)
 	return buffer[index0] + frac * (buffer[index1]-buffer[index0]);
 }
 
+//######################################################################
+// WAVESHAPER
+waveshaper::waveshaper()
+{
+	//initialize the transfer function table with default function
+	for(int i=0;i<256;i++)
+	{
+		float x = ((float)i-127.5f)/127.5f;
+		transferFunctionTable[i]=2.0f/(1+expf(-6.0f*x))-1.0f;
+	}
+}
 
+float waveshaper::process(float in)
+{
+	float val = (in+1.0f)*127.5f;
+	if(val<0.0f) val = 0.0f;
+	if(val>255.0f) val=255.0f;
+	return lookupLinear(val,transferFunctionTable);
+}
+
+void waveshaper::process(float* in, float* out, int sampleCount)
+{
+	for(int i=0;i<sampleCount;i++)
+	{
+		float val = (in[i]+1.0f)*127.5f;
+		if(val<0.0f) val = 0.0f;
+		if(val>255.0f) val=255.0f;
+		out[i]= lookupLinear(val,transferFunctionTable);
+	}
+}
+
+//######################################################################
+// RC HIGH-PASS FILTER
+rchipass::rchipass()
+{
+	vc=0;
+	setCutOff(20);
+}
+
+void rchipass::setTimeConstant(float val)
+{
+	tc = val;
+}
+
+void rchipass::setCutOff(float val)
+{
+	tc = 1/(6.283*val);
+}
+
+float rchipass::process(float in)
+{
+	float delta = (in-vc)/(tc*44100);
+	vc = vc + delta;
+	return in-vc;
+}
+
+void rchipass::process(float* in, float* out, int sampleCount)
+{
+	for(int i=0;i<sampleCount;i++)
+	{
+		float delta = (in[i]-vc)/(tc*44100);
+		vc = vc + delta;
+		out[i]=in[i]-vc;
+	}
+}
+
+//######################################################################
+// RC LOW-PASS FILTER
+rclopass::rclopass()
+{
+	vc=0;
+	setCutOff(1000);
+}
+
+void rclopass::setTimeConstant(float val)
+{
+	tc = val;
+}
+
+void rclopass::setCutOff(float val)
+{
+	tc = 1/(6.283*val);
+}
+
+float rclopass::process(float in)
+{
+	float delta = (in-vc)/(tc*44100);
+	vc = vc + delta;
+	return vc;
+}
+
+void rclopass::process(float* in, float* out, int sampleCount)
+{
+	for(int i=0;i<sampleCount;i++)
+	{
+		float delta = (in[i]-vc)/(tc*44100);
+		vc = vc + delta;
+		out[i]=vc;
+	}
+}
+
+//######################################################################
+// SIMPLE TONE
+simpletone::simpletone()
+{
+	hiPass.setTimeConstant(0.0001078); //emulate big muff R22k and C4.9nF
+	loPass.setTimeConstant(0.00039); //emulate big muff R39k and C10nF
+}
+
+void simpletone::setTone(float val)
+{
+	tone = val;
+}
+
+float simpletone::process(float in)
+{
+	return tone * hiPass.process(in) + (1-tone) * loPass.process(in);
+}
+
+void simpletone::process(float* in, float* out, int sampleCount)
+{
+	for(int i=0;i<sampleCount;i++)
+	{
+		out[i] = tone * hiPass.process(in[i]) + (1-tone) * loPass.process(in[i]);
+	}
+}
+
+//######################################################################
+// NOISE GATE
+
+noisegate::noisegate()
+{
+	envelope = 0;
+	setThreshold(-70);
+	
+	lpf = new biquadFilter(2);
+	const float co[] = 
+	{
+	    0.000008577602186511523, 0.000017155204373023046, 0.000008577602186511523, 1.9894924600456316, -0.9895247688375751,// b0, b1, b2, a1, a2
+		0.00000762939453125, 0.0000152587890625, 0.00000762939453125, 1.995615255450843, -0.9956476636752434// b0, b1, b2, a1, a2
+	};
+	lpf->setCoef(co);
+}
+
+float noisegate::process(float in)
+{
+	float level = lpf->process(fabsf(in));
+	
+	//peak detector
+	float delta = level - envelope;
+	if(delta > 0)
+		envelope += delta;
+	else
+	{
+		envelope += 0.001*delta;
+	}
+	
+	//detecting the gate and expansion area
+	if(envelope < lowerTh)
+	{
+		in = 0;
+	}
+	else if(envelope < upperTh)
+	{
+		in = in * (envelope - lowerTh)/(upperTh-lowerTh);
+	}
+	return in;
+}
+
+void noisegate::process(float* in, float* out, int sampleCount)
+{
+	for(int i=0;i<sampleCount;i++)
+	{
+		out[i]=process(in[i]);
+	}
+}
+
+//0 = -70dB, 1 = -10dB
+void noisegate::setThreshold(float val)
+{
+	float dB = -70.0f + 60.0f * val;
+	upperTh = powf(10,dB/20.0f);
+	lowerTh = upperTh/2.0f;
+}
