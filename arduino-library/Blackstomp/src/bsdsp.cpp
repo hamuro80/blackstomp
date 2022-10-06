@@ -29,6 +29,8 @@
 #include "blackstomp.h"
 #include <math.h>
 
+//######################################################################
+// LOOKUPLINEAR
 float lookupLinear(float x, const float* table)
 {
   int index = (int)x;
@@ -87,51 +89,64 @@ float oscillator::getOutput()
 //######################################################################
 // BIQUAD FILTER
 // Implementation of direct-form-2 biquad iir filter
+
+//direct-form-2 biquad iir filter
+struct biquadState
+{
+  float coef[5]; //a1, a2, b0, b1, b2
+  float w[2];
+};
+
 biquadFilter::biquadFilter(int stageCount)
 {
   stages = stageCount;
-  states = new biquadState[stages];
+  biquadState* s = new biquadState[stages];
+  states = (void*) s;
   for(int i=0;i<stages;i++)
   {
-    states[i].w[0]=0;
-    states[i].w[1]=0;
+    s[i].w[0]=0;
+    s[i].w[1]=0;
   }
 }
 
 biquadFilter::~biquadFilter()
 {
+  biquadState* sp = (biquadState*) states;
   delete[] states;
 }
 
 void biquadFilter::setCoef(const float* coef)
 {
+  biquadState* sp = (biquadState*) states;
   for(int i=0;i<stages;i++)
   {
     for(int n=0;n<5;n++)
-      states[i].coef[n]=coef[(5*i)+n];
+      sp[i].coef[n]=coef[(5*i)+n];
   }
 }
 
 void biquadFilter::reset()
 {
+	biquadState* sp = (biquadState*) states;
     for(int i=0;i<stages;i++)
     {
-      states[i].w[0]=0;
-      states[i].w[1]=0;
+      sp[i].w[0]=0;
+      sp[i].w[1]=0;
     }
 }
 
 void biquadFilter::process(const float* in, float* out, int sampleCount)
 {
+  biquadState* sp = (biquadState*) states;
   for(int i=0;i<sampleCount;i++)
   {
     float input = in[i];
     for(int s=0; s<stages; s++) 
     {
-      float temp = input + states[s].coef[3] * states[s].w[0] + states[s].coef[4]*states[s].w[1];
-      input = temp * states[s].coef[0] + states[s].coef[1] * states[s].w[0] + states[s].coef[2]*states[s].w[1];
-      states[s].w[1]=states[s].w[0];
-      states[s].w[0]=temp;
+      float temp = input + sp[s].coef[3] * sp[s].w[0] + sp[s].coef[4]*sp[s].w[1];
+      input = temp * sp[s].coef[0] + sp[s].coef[1] * sp[s].w[0] + sp[s].coef[2]*sp[s].w[1];
+      sp[s].w[1]=sp[s].w[0];
+      sp[s].w[0]=temp;
     }
     out[i]=input;
   }
@@ -139,13 +154,14 @@ void biquadFilter::process(const float* in, float* out, int sampleCount)
 
 float biquadFilter::process(float in)
 {
+	biquadState* sp = (biquadState*) states;
 	float input = in;
     for(int s=0; s<stages; s++) 
     {
-      float temp = input + states[s].coef[3] * states[s].w[0] + states[s].coef[4]*states[s].w[1];
-      input = temp * states[s].coef[0] + states[s].coef[1] * states[s].w[0] + states[s].coef[2]*states[s].w[1];
-      states[s].w[1]=states[s].w[0];
-      states[s].w[0]=temp;
+      float temp = input + sp[s].coef[3] * sp[s].w[0] + sp[s].coef[4]*sp[s].w[1];
+      input = temp * sp[s].coef[0] + sp[s].coef[1] * sp[s].w[0] + sp[s].coef[2]*sp[s].w[1];
+      sp[s].w[1]=sp[s].w[0];
+      sp[s].w[0]=temp;
     }
     return input;
 }
@@ -209,7 +225,7 @@ float fractionalDelay::read(float delayInMs)
 
 //######################################################################
 // WAVESHAPER
-waveshaper::waveshaper()
+waveShaper::waveShaper()
 {
 	//initialize the transfer function table with default function
 	for(int i=0;i<256;i++)
@@ -219,7 +235,7 @@ waveshaper::waveshaper()
 	}
 }
 
-float waveshaper::process(float in)
+float waveShaper::process(float in)
 {
 	float val = (in+1.0f)*127.5f;
 	if(val<0.0f) val = 0.0f;
@@ -227,7 +243,7 @@ float waveshaper::process(float in)
 	return lookupLinear(val,transferFunctionTable);
 }
 
-void waveshaper::process(float* in, float* out, int sampleCount)
+void waveShaper::process(float* in, float* out, int sampleCount)
 {
 	for(int i=0;i<sampleCount;i++)
 	{
@@ -240,30 +256,30 @@ void waveshaper::process(float* in, float* out, int sampleCount)
 
 //######################################################################
 // RC HIGH-PASS FILTER
-rchipass::rchipass()
+rcHiPass::rcHiPass()
 {
 	vc=0;
 	setCutOff(20);
 }
 
-void rchipass::setTimeConstant(float val)
+void rcHiPass::setTimeConstant(float val)
 {
 	tc = val;
 }
 
-void rchipass::setCutOff(float val)
+void rcHiPass::setCutOff(float val)
 {
 	tc = 1/(6.283*val);
 }
 
-float rchipass::process(float in)
+float rcHiPass::process(float in)
 {
 	float delta = (in-vc)/(tc*44100);
 	vc = vc + delta;
 	return in-vc;
 }
 
-void rchipass::process(float* in, float* out, int sampleCount)
+void rcHiPass::process(float* in, float* out, int sampleCount)
 {
 	for(int i=0;i<sampleCount;i++)
 	{
@@ -275,30 +291,30 @@ void rchipass::process(float* in, float* out, int sampleCount)
 
 //######################################################################
 // RC LOW-PASS FILTER
-rclopass::rclopass()
+rcLoPass::rcLoPass()
 {
 	vc=0;
 	setCutOff(1000);
 }
 
-void rclopass::setTimeConstant(float val)
+void rcLoPass::setTimeConstant(float val)
 {
 	tc = val;
 }
 
-void rclopass::setCutOff(float val)
+void rcLoPass::setCutOff(float val)
 {
 	tc = 1/(6.283*val);
 }
 
-float rclopass::process(float in)
+float rcLoPass::process(float in)
 {
 	float delta = (in-vc)/(tc*44100);
 	vc = vc + delta;
 	return vc;
 }
 
-void rclopass::process(float* in, float* out, int sampleCount)
+void rcLoPass::process(float* in, float* out, int sampleCount)
 {
 	for(int i=0;i<sampleCount;i++)
 	{
@@ -310,23 +326,23 @@ void rclopass::process(float* in, float* out, int sampleCount)
 
 //######################################################################
 // SIMPLE TONE
-simpletone::simpletone()
+simpleTone::simpleTone()
 {
 	hiPass.setTimeConstant(0.0001078); //emulate big muff R22k and C4.9nF
 	loPass.setTimeConstant(0.00039); //emulate big muff R39k and C10nF
 }
 
-void simpletone::setTone(float val)
+void simpleTone::setTone(float val)
 {
 	tone = val;
 }
 
-float simpletone::process(float in)
+float simpleTone::process(float in)
 {
 	return tone * hiPass.process(in) + (1-tone) * loPass.process(in);
 }
 
-void simpletone::process(float* in, float* out, int sampleCount)
+void simpleTone::process(float* in, float* out, int sampleCount)
 {
 	for(int i=0;i<sampleCount;i++)
 	{
@@ -337,32 +353,26 @@ void simpletone::process(float* in, float* out, int sampleCount)
 //######################################################################
 // NOISE GATE
 
-noisegate::noisegate()
+noiseGate::noiseGate()
 {
 	envelope = 0;
-	setThreshold(-70);
+	setThreshold(0);
 	
+	//2 stages = 4th order
 	lpf = new biquadFilter(2);
+	
+	//4th order 20Hz lpf (44.1KHz)
 	const float co[] = 
 	{
-	    0.000008577602186511523, 0.000017155204373023046, 0.000008577602186511523, 1.9894924600456316, -0.9895247688375751,// b0, b1, b2, a1, a2
-		0.00000762939453125, 0.0000152587890625, 0.00000762939453125, 1.995615255450843, -0.9956476636752434// b0, b1, b2, a1, a2
+		0.000002152381733479521, 0.000004304763466959042, 0.000002152381733479521, 1.9947405124091158, -0.9947486108316238,// b0, b1, b2, a1, a2
+		0.0000019073486328125, 0.000003814697265625, 0.0000019073486328125, 1.997813341671618, -0.9978214525694677// b0, b1, b2, a1, a2
 	};
 	lpf->setCoef(co);
 }
 
-float noisegate::process(float in)
+float noiseGate::process(float in)
 {
-	float level = lpf->process(fabsf(in));
-	
-	//peak detector
-	float delta = level - envelope;
-	if(delta > 0)
-		envelope += delta;
-	else
-	{
-		envelope += 0.001*delta;
-	}
+	envelope = 1.4142 * lpf->process(fabsf(in));
 	
 	//detecting the gate and expansion area
 	if(envelope < lowerTh)
@@ -376,7 +386,7 @@ float noisegate::process(float in)
 	return in;
 }
 
-void noisegate::process(float* in, float* out, int sampleCount)
+void noiseGate::process(float* in, float* out, int sampleCount)
 {
 	for(int i=0;i<sampleCount;i++)
 	{
@@ -385,7 +395,7 @@ void noisegate::process(float* in, float* out, int sampleCount)
 }
 
 //0 = -70dB, 1 = -10dB
-void noisegate::setThreshold(float val)
+void noiseGate::setThreshold(float val)
 {
 	float dB = -70.0f + 60.0f * val;
 	upperTh = powf(10,dB/20.0f);

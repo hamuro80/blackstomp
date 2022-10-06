@@ -1,6 +1,6 @@
 # BLACKSTOMP
-* Description: A quick development platform for ESP32-A1S digital audio effect processor!
-* Version: 3.6
+* Description: A quick development platform for ESP32-A1S digital effect pedal
+* Version: 3.7
 
 # Features
 - Dual core 240MHz Tensilica Xtensa LX-6 (32-bit processor with floating point unit)
@@ -27,6 +27,10 @@
 - Provide implementation of multi-button mode of the control input
 
 # Change History
+* Version 3.7
+  + Edited bsdsp.h, bsdsp.cpp, and distortion.ino for more consistent camelCase class naming
+  + Changed level detection algo in noiseGate object using only fullwave rectifier and 4th order 20Hz low pass filter
+  + Added distortion.ino in the example (stacked distortion with tone control and noise gate)
 * Version 3.6
   + Added waveshaper, rchipass, rclopass, simpletone, and noisegate objects in the library (bsdsp.h, bsdsp.cpp)
   + Added distortion.ino in the example (stacked distortion with tone control and noise gate)

@@ -29,12 +29,12 @@
 class distortion:public effectModule
 {
   private:
-    waveshaper dist;
-    waveshaper dist2;
-    rchipass decoupler;
-    rchipass decoupler2;
-    simpletone tonecontrol;
-    noisegate gate;
+    waveShaper dist;
+    waveShaper dist2;
+    rcHiPass decoupler;
+    rcHiPass decoupler2;
+    simpleTone tonecontrol;
+    noiseGate gate;
     float inGain;
     float outGain;
   public:

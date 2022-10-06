@@ -33,18 +33,11 @@
 // x = ranges from 0.0 to 255.0; table size is 256 (table[0] to table[255])
 float lookupLinear(float x, const float* table);
 
-//direct-form-2 biquad iir filter
-struct biquadState
-{
-  float coef[5]; //a1, a2, b0, b1, b2
-  float w[2];
-};
-
 class biquadFilter
 {
   private:
     int stages;
-    biquadState* states;
+    void* states;
   public:
   float process(float in);
   void process(const float* in, float* out, int sampleCount);
@@ -93,11 +86,11 @@ class oscillator
 	float getOutput();
 };
 
-class waveshaper
+class waveShaper
 {
 	public:
 		//constructor
-		waveshaper();
+		waveShaper();
 		float transferFunctionTable[256];
 		//block processing mode
 		void process(float* in, float* out, int sampleCount);
@@ -105,59 +98,59 @@ class waveshaper
 		float process(float in);
 };
 
-class rchipass
+class rcHiPass
 {
 	private:
 		float vc;	//capacitor voltage
 		float tc;	//time constant
 	public:
-	rchipass();
+	rcHiPass();
 	void setCutOff(float val);
 	void setTimeConstant(float val);
 	float process(float in);
 	void process(float* in, float* out, int sampleCount);
 };
 
-class rclopass
+class rcLoPass
 {
 	private:
 		float vc;	//capacitor voltage
 		float tc;	//time constant
 	public:
-	rclopass();
+	rcLoPass();
 	void setCutOff(float val);
 	void setTimeConstant(float val);
 	float process(float in);
 	void process(float* in, float* out, int sampleCount);
 };
 
-class simpletone
+class simpleTone
 {
 	private:
 	float tone;
 	
 	public:
-	simpletone();
-	rclopass loPass;
-	rchipass hiPass;
+	simpleTone();
+	rcLoPass loPass;
+	rcHiPass hiPass;
 	float process(float in);
 	void process(float* in, float* out, int sampleCount);
 	void setTone(float val);	//0.0-1.0
 };
 
-class noisegate
+class noiseGate
 {
 	private:
 	biquadFilter* lpf;
 	float upperTh;
 	float lowerTh;
+	float envelope;
 	
 	public:
-	noisegate();
+	noiseGate();
 	float process(float in);
 	void process(float* in, float* out, int sampleCount);
-	void setThreshold(float val);
-	float envelope;
+	void setThreshold(float val); //0 = -70dB, 1 = -10dB
 };
 
 #endif
