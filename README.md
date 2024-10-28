@@ -1,6 +1,6 @@
 # BLACKSTOMP
 * Description: A quick development platform for ESP32-A1S digital effect pedal
-* Version: 3.7
+* Version: 3.8
 
 # Features
 - Dual core 240MHz Tensilica Xtensa LX-6 (32-bit processor with floating point unit)
@@ -27,6 +27,9 @@
 - Provide implementation of multi-button mode of the control input
 
 # Change History
+* Version 3.8
+  + Change <hwcrypto/aes.h> to <aes/esp_aes.h>  in btterminal.h
+  + Tested with Arduino IDE 2.3.3, with Board esp32 by Espressif System V2.0.17 (install from board manager), MIDI Library by Francois Best, Lathoub V5.0.2
 * Version 3.7
   + Edited bsdsp.h, bsdsp.cpp, and distortion.ino for more consistent camelCase class naming
   + Changed level detection algo in noiseGate object using only fullwave rectifier and 4th order 20Hz low pass filter
