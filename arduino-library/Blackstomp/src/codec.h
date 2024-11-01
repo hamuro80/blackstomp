@@ -28,8 +28,8 @@ class codec
 {
   protected:
 	int i2cAddress;
-	virtual bool writeReg(uint8_t reg, uint16_t val){};
-	virtual uint16_t readReg(uint8_t reg){};
+	virtual bool writeReg(uint8_t reg, uint16_t val){return 0;};
+	virtual uint16_t readReg(uint8_t reg){return 0;};
 	
   private:
 	int inmode;
@@ -41,7 +41,7 @@ class codec
 	bool* muteRightAdcIn;
 	
 	//initialize the codec
-	virtual bool init(int address){};
+	virtual bool init(int address){return 0;};
 	
 	//get and set the input mode
 	//mode 0: L+R, mode 1: L+MIC
@@ -51,30 +51,30 @@ class codec
 	//get and set the output level (analog gain)
 	//vol = 0-30 for ES83-version module
 	//vol = 0-31 for AC101-version module
-	virtual bool setOutVol(int vol){};
-	virtual int getOutVol(){};
+	virtual bool setOutVol(int vol){return 0;};
+	virtual int getOutVol(){return 0;};
 	
 	//get and set the input gain (analog)
-	virtual bool setInGain(int gain){};
-	virtual int getInGain(){};
+	virtual bool setInGain(int gain){return 0;};
+	virtual int getInGain(){return 0;};
 	
 	//get and set microphone gain (0:0dB,1-7:30dB-48dB)
-	virtual uint8_t getMicGain(){};
-	virtual bool setMicGain(uint8_t gain){};
+	virtual uint8_t getMicGain(){return 0;};
+	virtual bool setMicGain(uint8_t gain){return 0;};
 	
 	//get and set microphone noise gate (0-31: -76.5dB, -75.0dB,...., -30.0dB)
-	virtual int getMicNoiseGate(){};
-	virtual bool setMicNoiseGate(int gate){};
+	virtual int getMicNoiseGate(){return 0;};
+	virtual bool setMicNoiseGate(int gate){return 0;};
 	
 	//optimize the analog to digital conversion range
 	//range: 0, 1, 2, 3, 4 (1Vrms/2.83Vpp, 0.5Vrms/1.41Vpp, 0.25Vrms/707mVpp, 0.125Vrms/354mVpp, 0.625Vrms/177mVpp)
-	virtual void optimizeConversion(int range=2);
+	virtual void optimizeConversion(int range=2){};
 	
 	//bypassed the analog input to the output, disconnect the digital i/o 
-	virtual bool analogBypass(bool bypass, BYPASS_MODE bm=BM_LR){};  
+	virtual bool analogBypass(bool bypass, BYPASS_MODE bm=BM_LR){return 0;};  
 
 	//bypassed the analog input to the output, disconnect the digital input, preserve the digital output connection
-	virtual bool analogSoftBypass(bool bypass, BYPASS_MODE bm=BM_LR){};  
+	virtual bool analogSoftBypass(bool bypass, BYPASS_MODE bm=BM_LR){return 0;};  
 };
 
 //class for AC101 codec
